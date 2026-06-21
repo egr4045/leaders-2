@@ -1,14 +1,15 @@
 /**
- * Client lobby store. Owns the Socket.io connection to the lobby service and mirrors the
- * server-authoritative lobby state. On load it re-claims the stored account and reconnects, so a
- * refresh restores your seat (correct re-entry). The server is the source of truth — actions just
- * emit commands and the store renders whatever `lobby.state` comes back.
+ * CIVA lobby store. Owns the Socket.io connection to the CIVA lobby service and mirrors the
+ * server-authoritative lobby state. Platform login lives in `platformStore`; here we just take the
+ * stored account, refresh its token and connect. On entering CIVA it reconnects, so a refresh
+ * restores your seat (correct re-entry). The server is the source of truth — actions emit commands
+ * and the store renders whatever `lobby.state` comes back.
  */
 import { create } from 'zustand';
 import { io, type Socket } from 'socket.io-client';
 import { lobby, type ProtocolError } from '@civa/protocol';
 import { LOBBY_URL } from '../net/config.js';
-import { clearSession, loadSession, login } from '../net/authClient.js';
+import { loadSession, login } from '../net/authClient.js';
 import { useClientStore } from './clientStore.js';
 
 export type ConnStatus = 'idle' | 'connecting' | 'connected' | 'error';
@@ -25,9 +26,9 @@ interface LobbyUIState {
   room: lobby.LobbyRoom | null;
   error: string | null;
 
-  connect: (displayName: string) => Promise<void>;
-  reconnectIfPossible: () => void;
-  logout: () => void;
+  /** Connect to the CIVA lobby using the stored account (refreshes the access token first). */
+  connectToLobby: () => Promise<void>;
+  disconnect: () => void;
   create: (name?: string) => void;
   join: (roomId: string) => void;
   leave: () => void;
@@ -36,19 +37,25 @@ interface LobbyUIState {
   start: () => void;
 }
 
-export const useLobbyStore = create<LobbyUIState>((set, get) => ({
+export const useLobbyStore = create<LobbyUIState>((set) => ({
   status: 'idle',
   me: null,
   rooms: [],
   room: null,
   error: null,
 
-  connect: async (displayName) => {
+  connectToLobby: async () => {
+    if (socket?.connected) return;
     set({ status: 'connecting', error: null });
+    const prev = loadSession();
+    if (!prev) {
+      set({ status: 'error', error: 'not logged in' });
+      return;
+    }
     let token: string;
     try {
-      const prev = loadSession();
-      const session = await login(displayName, prev?.accountId);
+      // Refresh the access token for the same account (tokens are short-lived).
+      const session = await login(prev.displayName, prev.accountId);
       token = session.accessToken;
       set({ me: { accountId: session.accountId, displayName: session.displayName } });
     } catch (err) {
@@ -66,7 +73,6 @@ export const useLobbyStore = create<LobbyUIState>((set, get) => ({
     socket.on(lobby.S2C.rooms, (p: lobby.RoomsEvent) => set({ rooms: p.rooms }));
     socket.on(lobby.S2C.state, (p: lobby.StateEvent) => {
       set({ room: p.room });
-      // If we reconnect into an already-started game, advance straight to it.
       if (p.room?.status === 'started') useClientStore.getState().setPhase('year');
     });
     socket.on(lobby.S2C.started, () => useClientStore.getState().setPhase('year'));
@@ -76,16 +82,10 @@ export const useLobbyStore = create<LobbyUIState>((set, get) => ({
     });
   },
 
-  reconnectIfPossible: () => {
-    const prev = loadSession();
-    if (prev && get().status === 'idle') void get().connect(prev.displayName);
-  },
-
-  logout: () => {
+  disconnect: () => {
     socket?.close();
     socket = null;
-    clearSession();
-    set({ status: 'idle', me: null, room: null, rooms: [], error: null });
+    set({ status: 'idle', room: null, rooms: [] });
   },
 
   create: (name) => emit(lobby.C2S.create, { name }),

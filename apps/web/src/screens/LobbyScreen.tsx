@@ -2,6 +2,8 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { nations } from '@civa/game-config';
 import type { lobby } from '@civa/protocol';
 import { useLobbyStore } from '../state/lobbyStore.js';
+import { usePlatformStore } from '../platform/platformStore.js';
+import { GAMES, type GameInfo } from '../platform/games.js';
 
 const NATION_FLAG: Record<string, string> = {
   usa: '🇺🇸',
@@ -24,78 +26,190 @@ const shell: CSSProperties = {
   pointerEvents: 'auto',
 };
 
-/** Phase 1.14 / Phase 2 — the real lobby, driven by the lobby service over Socket.io. */
-export const LobbyScreen = (): JSX.Element => {
-  const status = useLobbyStore((s) => s.status);
-  const me = useLobbyStore((s) => s.me);
-  const room = useLobbyStore((s) => s.room);
+const inputStyle: CSSProperties = {
+  width: '100%',
+  padding: '12px 14px',
+  borderRadius: 'var(--r-md)',
+  background: 'var(--c-panel-solid)',
+  color: 'var(--c-text-primary)',
+  border: '1px solid var(--c-panel-border)',
+  fontSize: 'var(--fs-md)',
+};
 
-  // Auto-reconnect with the stored account on load (correct re-entry).
+const primaryBtn: CSSProperties = {
+  padding: '10px 18px',
+  borderRadius: 'var(--r-md)',
+  background: 'var(--c-accent)',
+  color: 'var(--c-text-inverse)',
+  fontWeight: 700,
+};
+
+/**
+ * Platform router: shared login → game selection (hub) → the selected game's lobby. Today only
+ * CIVA is playable; new games appear as tiles (point 1 & 3). Account identity is durable, so a
+ * reload returns you to the hub and — inside CIVA — to your seat.
+ */
+export const LobbyScreen = (): JSX.Element => {
+  const account = usePlatformStore((s) => s.account);
+  const selectedGame = usePlatformStore((s) => s.selectedGame);
+
   useEffect(() => {
-    useLobbyStore.getState().reconnectIfPossible();
+    usePlatformStore.getState().restore();
   }, []);
 
-  if (!me) return <NameEntry />;
-  if (!room) return <RoomList />;
-  return <RoomView room={room} myAccountId={me.accountId} status={status} />;
+  if (!account) return <NameEntry />;
+  if (!selectedGame) return <GameSelect />;
+  if (selectedGame === 'civa') return <CivaLobby />;
+  return <GameSelect />;
 };
 
-const ErrorBanner = (): JSX.Element | null => {
-  const error = useLobbyStore((s) => s.error);
-  if (!error) return null;
-  return (
+const Err = ({ error }: { error: string | null }): JSX.Element | null =>
+  error ? (
     <div style={{ color: 'var(--c-negative)', fontSize: 'var(--fs-sm)', marginTop: 8 }}>⚠ {error}</div>
-  );
-};
+  ) : null;
 
+// --- Shared login -----------------------------------------------------------
 const NameEntry = (): JSX.Element => {
-  const connect = useLobbyStore((s) => s.connect);
-  const status = useLobbyStore((s) => s.status);
+  const login = usePlatformStore((s) => s.login);
+  const status = usePlatformStore((s) => s.status);
+  const error = usePlatformStore((s) => s.error);
   const [name, setName] = useState('');
+  const go = () => name.trim() && void login(name.trim());
+
   return (
     <div style={shell}>
       <div className="civa-panel civa-fade-in" style={{ width: 380, padding: 24, textAlign: 'center' }}>
-        <h1 style={{ fontSize: 'var(--fs-xxl)', fontWeight: 800, letterSpacing: 1 }}>CIVA</h1>
-        <p style={{ color: 'var(--c-text-muted)', margin: '8px 0 18px' }}>Choose a display name to enter the lobby.</p>
+        <h1 style={{ fontSize: 'var(--fs-xxl)', fontWeight: 800, letterSpacing: 1 }}>Game Hub</h1>
+        <p style={{ color: 'var(--c-text-muted)', margin: '8px 0 18px' }}>
+          One account, many games. Choose a display name.
+        </p>
         <input
           autoFocus
           value={name}
           placeholder="Your name"
           onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && name.trim() && connect(name.trim())}
+          onKeyDown={(e) => e.key === 'Enter' && go()}
           style={inputStyle}
         />
         <button
-          disabled={!name.trim() || status === 'connecting'}
-          onClick={() => connect(name.trim())}
+          disabled={!name.trim() || status === 'logging-in'}
+          onClick={go}
           style={{ ...primaryBtn, width: '100%', marginTop: 12, opacity: !name.trim() ? 0.5 : 1 }}
         >
-          {status === 'connecting' ? 'Connecting…' : 'Enter lobby ▸'}
+          {status === 'logging-in' ? 'Signing in…' : 'Enter ▸'}
         </button>
-        <ErrorBanner />
+        <Err error={error} />
       </div>
     </div>
   );
 };
 
-const RoomList = (): JSX.Element => {
+// --- Game selection (hub) ---------------------------------------------------
+const GameSelect = (): JSX.Element => {
+  const account = usePlatformStore((s) => s.account);
+  const selectGame = usePlatformStore((s) => s.selectGame);
+  const logout = usePlatformStore((s) => s.logout);
+
+  return (
+    <div style={shell}>
+      <div className="civa-panel civa-fade-in" style={{ width: 720, maxWidth: '94vw', padding: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 18 }}>
+          <h1 style={{ fontSize: 'var(--fs-xl)', fontWeight: 800 }}>Choose a game</h1>
+          <span style={{ marginLeft: 'auto', color: 'var(--c-text-muted)', fontSize: 'var(--fs-sm)' }}>
+            {account?.displayName} ·{' '}
+            <button onClick={logout} style={{ color: 'var(--c-accent)', fontSize: 'var(--fs-sm)' }}>
+              sign out
+            </button>
+          </span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          {GAMES.map((g) => (
+            <GameTile key={g.id} game={g} onPlay={() => selectGame(g.id)} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const GameTile = ({ game, onPlay }: { game: GameInfo; onPlay: () => void }): JSX.Element => {
+  const playable = game.status === 'playable';
+  return (
+    <button
+      disabled={!playable}
+      onClick={onPlay}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        padding: 18,
+        borderRadius: 'var(--r-lg)',
+        textAlign: 'left',
+        minHeight: 150,
+        border: `1px solid ${playable ? game.accent : 'var(--c-panel-border)'}`,
+        background: playable
+          ? `linear-gradient(160deg, ${game.accent}22, rgba(255,255,255,0.03))`
+          : 'rgba(255,255,255,0.02)',
+        opacity: playable ? 1 : 0.6,
+        cursor: playable ? 'pointer' : 'default',
+      }}
+    >
+      <span style={{ fontSize: 34 }}>{game.emoji}</span>
+      <span style={{ fontWeight: 800, fontSize: 'var(--fs-lg)' }}>{game.name}</span>
+      <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--c-text-muted)', flex: 1 }}>{game.tagline}</span>
+      <span
+        style={{
+          alignSelf: 'flex-start',
+          padding: '4px 10px',
+          borderRadius: 'var(--r-pill)',
+          fontSize: 'var(--fs-xs)',
+          fontWeight: 700,
+          background: playable ? game.accent : 'rgba(255,255,255,0.08)',
+          color: playable ? 'var(--c-text-inverse)' : 'var(--c-text-muted)',
+        }}
+      >
+        {playable ? 'Play ▸' : 'Coming soon'}
+      </span>
+    </button>
+  );
+};
+
+// --- CIVA lobby -------------------------------------------------------------
+const exitToHub = (): void => {
+  useLobbyStore.getState().disconnect();
+  usePlatformStore.getState().exitGame();
+};
+
+const CivaLobby = (): JSX.Element => {
+  const me = useLobbyStore((s) => s.me);
+  const room = useLobbyStore((s) => s.room);
+  const status = useLobbyStore((s) => s.status);
+
+  useEffect(() => {
+    void useLobbyStore.getState().connectToLobby();
+  }, []);
+
+  if (!room) return <RoomList connecting={status !== 'connected'} />;
+  return <RoomView room={room} myAccountId={me?.accountId ?? ''} />;
+};
+
+const RoomList = ({ connecting }: { connecting: boolean }): JSX.Element => {
   const rooms = useLobbyStore((s) => s.rooms);
   const create = useLobbyStore((s) => s.create);
   const join = useLobbyStore((s) => s.join);
-  const me = useLobbyStore((s) => s.me);
-  const logout = useLobbyStore((s) => s.logout);
+  const error = useLobbyStore((s) => s.error);
 
   return (
     <div style={shell}>
       <div className="civa-panel civa-fade-in" style={{ width: 560, maxWidth: '92vw', padding: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
-          <h1 style={{ fontSize: 'var(--fs-xl)', fontWeight: 800 }}>Games</h1>
-          <span style={{ marginLeft: 'auto', color: 'var(--c-text-muted)', fontSize: 'var(--fs-sm)' }}>
-            {me?.displayName} ·{' '}
-            <button onClick={logout} style={{ color: 'var(--c-accent)', fontSize: 'var(--fs-sm)' }}>
-              change
-            </button>
-          </span>
+          <button onClick={exitToHub} style={{ color: 'var(--c-text-muted)', fontSize: 'var(--fs-sm)', marginRight: 12 }}>
+            ← Games
+          </button>
+          <h1 style={{ fontSize: 'var(--fs-xl)', fontWeight: 800 }}>🌍 CIVA</h1>
+          {connecting && (
+            <span style={{ marginLeft: 'auto', color: 'var(--c-text-muted)', fontSize: 'var(--fs-sm)' }}>connecting…</span>
+          )}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16, maxHeight: '50vh', overflowY: 'auto' }}>
@@ -130,25 +244,20 @@ const RoomList = (): JSX.Element => {
         <button onClick={() => create()} style={{ ...primaryBtn, width: '100%' }}>
           + Create game
         </button>
-        <ErrorBanner />
+        <Err error={error} />
       </div>
     </div>
   );
 };
 
-const RoomView = ({
-  room,
-  myAccountId,
-}: {
-  room: lobby.LobbyRoom;
-  myAccountId: string;
-  status: string;
-}): JSX.Element => {
+const RoomView = ({ room, myAccountId }: { room: lobby.LobbyRoom; myAccountId: string }): JSX.Element => {
   const { pickNation, setReady, start, leave } = useLobbyStore.getState();
+  const error = useLobbyStore((s) => s.error);
   const me = room.players.find((p) => p.accountId === myAccountId);
   const takenBy = new Map(room.players.filter((p) => p.nation).map((p) => [p.nation!, p.accountId]));
   const readyCount = room.players.filter((p) => p.ready).length;
   const isHost = me?.isHost ?? false;
+  const canStart = isHost && room.players.length >= room.minPlayers && readyCount === room.players.length;
 
   return (
     <div style={shell}>
@@ -191,82 +300,65 @@ const RoomView = ({
           ))}
         </div>
 
-        {/* Nation picker */}
-        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--c-text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+        {/* Nation grid */}
+        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--c-text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
           Pick a nation
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 18 }}>
           {nations.map((n) => {
             const owner = takenBy.get(n.id);
-            const mine = me?.nation === n.id;
-            const takenByOther = owner !== undefined && owner !== myAccountId;
+            const mine = owner === myAccountId;
+            const taken = owner && !mine;
             return (
               <button
                 key={n.id}
-                disabled={takenByOther}
+                disabled={Boolean(taken)}
                 onClick={() => pickNation(mine ? null : n.id)}
                 style={{
-                  padding: 12,
-                  borderRadius: 'var(--r-lg)',
+                  padding: 10,
+                  borderRadius: 'var(--r-md)',
                   border: `2px solid ${mine ? 'var(--c-accent)' : 'var(--c-panel-border)'}`,
                   background: mine ? 'var(--c-accent-muted)' : 'rgba(255,255,255,0.03)',
-                  opacity: takenByOther ? 0.4 : 1,
+                  opacity: taken ? 0.4 : 1,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   gap: 4,
                 }}
               >
-                <span style={{ fontSize: 26 }}>{NATION_FLAG[n.id]}</span>
+                <span style={{ fontSize: 24 }}>{NATION_FLAG[n.id]}</span>
                 <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600 }}>{n.name}</span>
               </button>
             );
           })}
         </div>
 
-        {/* Actions */}
         <div style={{ display: 'flex', gap: 10 }}>
           <button
             onClick={() => setReady(!me?.ready)}
-            disabled={!me?.nation}
             style={{
               flex: 1,
               padding: '12px',
               borderRadius: 'var(--r-md)',
-              fontWeight: 700,
               border: '1px solid var(--c-panel-border)',
+              fontWeight: 700,
               color: me?.ready ? 'var(--c-positive)' : 'var(--c-text-primary)',
-              opacity: !me?.nation ? 0.5 : 1,
             }}
           >
             {me?.ready ? '✓ Ready' : 'Ready up'}
           </button>
           {isHost && (
-            <button onClick={() => start()} style={{ ...primaryBtn, flex: 1, padding: '12px' }}>
+            <button
+              onClick={() => start()}
+              disabled={!canStart}
+              style={{ ...primaryBtn, flex: 1, opacity: canStart ? 1 : 0.5 }}
+            >
               Start game ▸
             </button>
           )}
         </div>
-        <ErrorBanner />
+        <Err error={error} />
       </div>
     </div>
   );
-};
-
-const inputStyle: CSSProperties = {
-  width: '100%',
-  padding: '12px 14px',
-  borderRadius: 'var(--r-md)',
-  background: 'var(--c-panel-solid)',
-  color: 'var(--c-text-primary)',
-  border: '1px solid var(--c-panel-border)',
-  fontSize: 'var(--fs-md)',
-};
-
-const primaryBtn: CSSProperties = {
-  padding: '8px 18px',
-  borderRadius: 'var(--r-md)',
-  background: 'var(--c-accent)',
-  color: 'var(--c-text-inverse)',
-  fontWeight: 700,
 };
