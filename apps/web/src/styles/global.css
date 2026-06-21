@@ -1,0 +1,121 @@
+/* Fixed full-screen layout (section 8): the map fills the background, translucent panels float
+   over it. No document scrolling — every panel manages its own overflow. */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--fs-md);
+  color: var(--c-text-primary);
+  background: var(--c-panel-solid);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+#root {
+  position: relative;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--c-panel-border);
+  border-radius: var(--r-pill);
+}
+
+/* Layer primitives ------------------------------------------------------- */
+
+.civa-canvas-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.civa-overlay-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none; /* panels re-enable pointer events individually */
+}
+
+.civa-panel {
+  background: var(--c-panel);
+  border: 1px solid var(--c-panel-border);
+  border-radius: var(--r-lg);
+  backdrop-filter: blur(8px);
+  pointer-events: auto;
+}
+
+.civa-fade-in {
+  animation: civaFadeIn var(--motion-base);
+}
+
+@keyframes civaFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Announcer "speaking" pulse used on the assembly screen. */
+.civa-eq {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 4px;
+  border-radius: 50%;
+  background: var(--c-positive);
+  animation: civaPulse 1s ease-in-out infinite;
+}
+
+@keyframes civaPulse {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+/* Ringing phone in the incoming-call queue. */
+@keyframes civaRing {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  20%,
+  60% {
+    transform: rotate(-12deg);
+  }
+  40%,
+  80% {
+    transform: rotate(12deg);
+  }
+}

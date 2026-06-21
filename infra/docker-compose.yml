@@ -1,0 +1,57 @@
+# Local development infrastructure for CIVA.
+#   corepack pnpm infra:up      -> start in the background
+#   corepack pnpm infra:down    -> stop
+#   corepack pnpm infra:reset   -> stop and wipe volumes (fresh DB)
+#
+# Services here are infrastructure only. Application services run from the workspace
+# (tsx/vite) during development; their production images are added in Phase 10.
+name: civa-infra
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: civa
+      POSTGRES_PASSWORD: civa
+      POSTGRES_DB: civa
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U civa']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '6379:6379'
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # LiveKit in dev mode: API key/secret = devkey/secret (do NOT use in production).
+  # Used by services/diplomacy (Phase 7) to mint room tokens for caucuses + the conference.
+  livekit:
+    image: livekit/livekit-server:latest
+    restart: unless-stopped
+    command: ['--dev', '--bind', '0.0.0.0']
+    ports:
+      - '7880:7880' # signaling (ws)
+      - '7881:7881' # rtc/tcp
+      - '7882:7882/udp' # rtc/udp
+    environment:
+      LIVEKIT_KEYS: 'devkey: secret'
+
+volumes:
+  pgdata:
+  redisdata:
