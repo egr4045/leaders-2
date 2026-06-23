@@ -21,9 +21,14 @@ git clone https://github.com/egr4045/leaders-2.git /root/civa
 cd /root/civa/deploy/civa
 cp .env.example .env
 sed -i "s/change-me-to-a-long-random-string/$(openssl rand -hex 32)/" .env
-docker compose up -d --build        # builds web (vite) + auth/lobby images
+bash build-images.sh                # builds with --network=host (registry over IPv4)
+docker compose up -d                # runs the prebuilt civa-service / civa-web images
 docker compose ps                   # auth, lobby, web should be Up
 ```
+
+> Why the build script? On this host the npm registry resolves to IPv6 (no IPv6 route) inside the
+> default Docker build network, so the build must use `--network=host` (the host reaches the
+> registry over IPv4). In a normal environment `docker compose up -d --build` also works.
 
 Verify locally (no DNS needed):
 

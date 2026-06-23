@@ -8,6 +8,7 @@ name: civa
 
 services:
   auth:
+    image: civa-service:latest
     build:
       context: ../..
       dockerfile: Dockerfile
@@ -23,6 +24,7 @@ services:
       - '8081'
 
   lobby:
+    image: civa-service:latest
     build:
       context: ../..
       dockerfile: Dockerfile
@@ -38,6 +40,7 @@ services:
       - '8082'
 
   web:
+    image: civa-web:latest
     build:
       context: ../..
       dockerfile: Dockerfile
