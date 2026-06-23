@@ -1,0 +1,28 @@
+# CIVA's self-contained reverse proxy (runs inside the `web` container on :8088).
+# One origin fronts the SPA + auth + lobby, so the client uses same-origin URLs and the stack is
+# exposed either on a raw port (test) or via the host Caddy subdomain (prod TLS) without rebuilds.
+{
+	admin off
+	auto_https off
+}
+
+:8088 {
+	encode gzip
+
+	# Auth HTTP API (client calls /auth/login on the same origin).
+	handle /auth/* {
+		reverse_proxy auth:8081
+	}
+
+	# Lobby Socket.io (websocket upgrade handled automatically).
+	handle /socket.io/* {
+		reverse_proxy lobby:8082
+	}
+
+	# SPA static with history fallback.
+	handle {
+		root * /srv/www
+		try_files {path} /index.html
+		file_server
+	}
+}

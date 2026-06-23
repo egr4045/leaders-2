@@ -1,0 +1,52 @@
+# CIVA game stack — self-contained, deployable alongside the existing Leaders without touching it.
+# auth + lobby run via tsx; the web container (Caddy) serves the SPA and fronts both on :8088.
+# The host Caddy (Leaders) later proxies civa.<domain> -> host.docker.internal:8088 (TLS).
+#
+#   cd deploy/civa && cp .env.example .env && edit JWT_SECRET
+#   docker compose up -d --build
+name: civa
+
+services:
+  auth:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      target: service
+    command: ['pnpm', '--filter', '@civa/auth', 'start']
+    environment:
+      AUTH_PORT: '8081'
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in deploy/civa/.env}
+      JWT_ISSUER: civa
+      NODE_ENV: production
+    restart: unless-stopped
+    expose:
+      - '8081'
+
+  lobby:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      target: service
+    command: ['pnpm', '--filter', '@civa/lobby', 'start']
+    environment:
+      LOBBY_PORT: '8082'
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in deploy/civa/.env}
+      JWT_ISSUER: civa
+      NODE_ENV: production
+    restart: unless-stopped
+    expose:
+      - '8082'
+
+  web:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      target: web
+    # Published on the host so the existing Leaders Caddy can reach it via host.docker.internal.
+    # Not public unless the firewall opens 8088 (only 80/443 are). Subdomain+TLS is the real entry.
+    ports:
+      - '8088:8088'
+    depends_on:
+      - auth
+      - lobby
+    restart: unless-stopped

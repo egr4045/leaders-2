@@ -1,0 +1,24 @@
+# syntax=docker/dockerfile:1
+# Multi-stage build for the CIVA stack: one base with the monorepo + deps, a built web SPA served
+# by a self-contained Caddy, and a service runtime image (auth/lobby run via tsx).
+
+FROM node:22-alpine AS base
+RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
+WORKDIR /app
+COPY . .
+RUN pnpm install --frozen-lockfile
+
+# --- Build the web SPA. In prod the client talks to auth/lobby on the SAME origin (the CIVA
+#     Caddy routes /auth and /socket.io), so no API URL needs baking in. ---
+FROM base AS webbuild
+RUN pnpm --filter @civa/web build
+
+# --- Static web + self-contained reverse proxy (one origin for web + auth + lobby) ---
+FROM caddy:2-alpine AS web
+COPY --from=webbuild /app/apps/web/dist /srv/www
+COPY deploy/civa/Caddyfile /etc/caddy/Caddyfile
+
+# --- Service runtime for auth & lobby (command set per-service in compose) ---
+FROM base AS service
+ENV NODE_ENV=production
+CMD ["node", "--version"]

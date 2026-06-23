@@ -1,0 +1,14 @@
+# Append this block to the EXISTING Leaders Caddyfile (/root/leaders/deploy/Caddyfile) to expose
+# CIVA on a subdomain with automatic TLS. CIVA's own Caddy (on :8088) already routes /auth,
+# /socket.io and the SPA, so the host Caddy just forwards the whole subdomain to it.
+#
+# Requires DNS:  civa.mygame-quiz.ru  A  186.246.11.239
+# Apply (no Leaders downtime):
+#   cp /root/leaders/deploy/Caddyfile /root/leaders/deploy/Caddyfile.bak
+#   cat this-block >> /root/leaders/deploy/Caddyfile
+#   docker exec leaders-caddy-1 caddy reload --config /etc/caddy/Caddyfile
+
+civa.mygame-quiz.ru {
+	encode gzip
+	reverse_proxy host.docker.internal:8088
+}
