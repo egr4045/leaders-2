@@ -3,7 +3,8 @@
 # by a self-contained Caddy, and a service runtime image (auth/lobby run via tsx).
 
 FROM node:22-alpine AS base
-RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
+# Install pnpm via npm (more reliable in CI/build sandboxes than corepack's downloader).
+RUN npm install -g pnpm@9.15.9
 WORKDIR /app
 COPY . .
 RUN pnpm install --frozen-lockfile
