@@ -3,7 +3,9 @@
 # by a self-contained Caddy, and a service runtime image (auth/lobby run via tsx).
 
 FROM node:22-alpine AS base
-# Install pnpm via npm (more reliable in CI/build sandboxes than corepack's downloader).
+# This host resolves npm registry to IPv6 but has no IPv6 route — force IPv4 so fetches work.
+ENV NODE_OPTIONS=--dns-result-order=ipv4first
+# Install pnpm via npm (more reliable in build sandboxes than corepack's downloader).
 RUN npm install -g pnpm@9.15.9
 WORKDIR /app
 COPY . .
