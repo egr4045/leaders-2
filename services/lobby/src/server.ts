@@ -45,6 +45,12 @@ export const createLobbyServer = (deps: LobbyDeps): LobbyServer => {
       res.end(JSON.stringify({ status: 'ok', service: 'lobby' }));
       return;
     }
+    // Live player count for the orchestrator's idle reaper (connected sockets to this game).
+    if (req.url === '/metrics') {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ players: io.engine.clientsCount }));
+      return;
+    }
     res.writeHead(404, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ error: 'not_found' }));
   });
