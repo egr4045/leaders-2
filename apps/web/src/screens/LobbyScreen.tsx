@@ -4,6 +4,7 @@ import type { lobby } from '@civa/protocol';
 import { useLobbyStore } from '../state/lobbyStore.js';
 import { usePlatformStore } from '../platform/platformStore.js';
 import { GAMES, type GameInfo } from '../platform/games.js';
+import { enterGame } from '../net/orchestratorClient.js';
 
 const NATION_FLAG: Record<string, string> = {
   usa: '🇺🇸',
@@ -184,14 +185,37 @@ const CivaLobby = (): JSX.Element => {
   const me = useLobbyStore((s) => s.me);
   const room = useLobbyStore((s) => s.room);
   const status = useLobbyStore((s) => s.status);
+  const [waking, setWaking] = useState(true);
 
   useEffect(() => {
-    void useLobbyStore.getState().connectToLobby();
+    let cancelled = false;
+    void (async () => {
+      await enterGame('civa'); // ask the orchestrator to start the game (no-op in dev)
+      if (cancelled) return;
+      setWaking(false);
+      await useLobbyStore.getState().connectToLobby();
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
+  if (waking) return <Splash text="Starting CIVA…" />;
   if (!room) return <RoomList connecting={status !== 'connected'} />;
   return <RoomView room={room} myAccountId={me?.accountId ?? ''} />;
 };
+
+const Splash = ({ text }: { text: string }): JSX.Element => (
+  <div style={shell}>
+    <div className="civa-panel civa-fade-in" style={{ padding: 28, textAlign: 'center' }}>
+      <div style={{ fontSize: 30, marginBottom: 8 }}>🌍</div>
+      <div style={{ fontWeight: 700 }}>{text}</div>
+      <div style={{ color: 'var(--c-text-muted)', fontSize: 'var(--fs-sm)', marginTop: 4 }}>
+        waking the game server…
+      </div>
+    </div>
+  </div>
+);
 
 const RoomList = ({ connecting }: { connecting: boolean }): JSX.Element => {
   const rooms = useLobbyStore((s) => s.rooms);

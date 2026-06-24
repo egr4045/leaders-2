@@ -4,31 +4,43 @@ The server (186.246.11.239, Ubuntu 24.04) already runs **Leaders**: a `docker co
 (Caddy on 80/443, LiveKit, Postgres, Redis) plus the NestJS `leaders.service` on :3000. Caddy
 serves `mygame-quiz.ru`. **We add CIVA additively and never touch the running Leaders.**
 
-CIVA ships as its own compose stack (`deploy/civa`): `auth` + `lobby` (run via tsx) behind CIVA's
-own Caddy (`web`) on host port **8088**. The host (Leaders) Caddy later proxies a subdomain to it.
+CIVA ships as two compose stacks sharing a `civa-net` network:
+- **Platform** (`deploy/civa`, always-on): `auth` + `orchestrator` + the gateway Caddy (`web`, host
+  port **8088**). The gateway fronts the SPA, auth, the orchestrator and the on-demand lobby.
+- **Game** (`deploy/civa-game`, on-demand): `lobby`. The orchestrator starts it on player entry and
+  stops it after 10 min idle. The host (Leaders) Caddy later proxies a subdomain to :8088.
 
 ## 1. Get the code on the server
 
 ```sh
-# Public repo:
-git clone https://github.com/egr4045/leaders-2.git /root/civa
-# or update:  git -C /root/civa pull
+git clone https://github.com/egr4045/leaders-2.git /root/civa   # or: git -C /root/civa pull
 ```
 
-## 2. Build & start the stack
+## 2. Build & start the platform
 
 ```sh
+docker network create civa-net 2>/dev/null || true
 cd /root/civa/deploy/civa
-cp .env.example .env
-sed -i "s/change-me-to-a-long-random-string/$(openssl rand -hex 32)/" .env
-bash build-images.sh                # builds with --network=host (registry over IPv4)
-docker compose up -d                # runs the prebuilt civa-service / civa-web images
-docker compose ps                   # auth, lobby, web should be Up
+SECRET=$(openssl rand -hex 32)
+cp .env.example .env;           sed -i "s/change-me-to-a-long-random-string/$SECRET/" .env
+cp ../civa-game/.env.example ../civa-game/.env
+sed -i "s/change-me-to-a-long-random-string/$SECRET/" ../civa-game/.env   # SAME secret
+bash build-images.sh            # builds service/web/orchestrator with --network=host (IPv4 registry)
+docker compose up -d            # auth + orchestrator + web (always-on); lobby starts on demand
+docker compose ps
 ```
 
 > Why the build script? On this host the npm registry resolves to IPv6 (no IPv6 route) inside the
 > default Docker build network, so the build must use `--network=host` (the host reaches the
-> registry over IPv4). In a normal environment `docker compose up -d --build` also works.
+> registry over IPv4).
+
+The orchestrator brings the lobby up on the first `enter`. To check on-demand + idle:
+
+```sh
+curl -s -XPOST localhost:8088/orchestrator/games/civa/enter   # -> {"ready":true}; lobby starts
+docker ps --format '{{.Names}}' | grep civa-game              # lobby now running
+# ...with nobody connected for 10 min, the reaper stops it (watch: docker logs civa-orchestrator-1)
+```
 
 Verify locally (no DNS needed):
 

@@ -1,0 +1,21 @@
+# CIVA *game* services — started on player entry and stopped when idle by the orchestrator.
+# Reached via the shared `civa-net` network (gateway proxies /socket.io here; the orchestrator
+# probes /metrics here). No host ports — only the gateway publishes a port.
+name: civa-game
+
+networks:
+  civa-net:
+    external: true
+
+services:
+  lobby:
+    image: civa-service:latest
+    command: ['pnpm', '--filter', '@civa/lobby', 'start']
+    environment:
+      LOBBY_PORT: '8082'
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in deploy/civa-game/.env}
+      JWT_ISSUER: civa
+      NODE_ENV: production
+    networks:
+      - civa-net
+    restart: unless-stopped

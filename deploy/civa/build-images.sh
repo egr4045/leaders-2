@@ -7,4 +7,5 @@ cd "$(dirname "$0")/../.."   # repo root (build context)
 
 docker build --network=host --target service -t civa-service:latest .
 docker build --network=host --target web -t civa-web:latest .
-echo "Built civa-service:latest and civa-web:latest"
+docker build --network=host --target orchestrator -t civa-orchestrator:latest .
+echo "Built civa-service / civa-web / civa-orchestrator (latest)"

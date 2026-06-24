@@ -25,3 +25,9 @@ COPY deploy/civa/Caddyfile /etc/caddy/Caddyfile
 FROM base AS service
 ENV NODE_ENV=production
 CMD ["node", "--version"]
+
+# --- Orchestrator: service runtime + docker CLI (controls per-game compose via the host socket) ---
+FROM base AS orchestrator
+RUN apk add --no-cache docker-cli docker-cli-compose
+ENV NODE_ENV=production
+CMD ["pnpm", "--filter", "@civa/orchestrator", "start"]
