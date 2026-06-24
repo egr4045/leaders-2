@@ -1,0 +1,23 @@
+# svoyak — on-demand game (own SPA + auth on its own origin/port). Started/stopped by the
+# orchestrator. Reached by the browser on host port 8089; the orchestrator probes /metrics on civa-net.
+name: svoyak
+
+networks:
+  civa-net:
+    external: true
+
+services:
+  svoyak:
+    image: svoyak:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      PORT: '8089'
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in deploy/svoyak/.env}
+      NODE_ENV: production
+    ports:
+      - '8089:8089'
+    networks:
+      - civa-net
+    restart: unless-stopped

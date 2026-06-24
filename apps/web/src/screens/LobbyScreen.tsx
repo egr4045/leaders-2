@@ -111,6 +111,18 @@ const GameSelect = (): JSX.Element => {
   const selectGame = usePlatformStore((s) => s.selectGame);
   const logout = usePlatformStore((s) => s.logout);
 
+  const handlePlay = (g: GameInfo): void => {
+    if (g.externalPort) {
+      // Wake the game (orchestrator) then navigate to its own origin.
+      void (async () => {
+        await enterGame(g.id);
+        window.location.href = `${window.location.protocol}//${window.location.hostname}:${g.externalPort}`;
+      })();
+    } else {
+      selectGame(g.id);
+    }
+  };
+
   return (
     <div style={shell}>
       <div className="civa-panel civa-fade-in" style={{ width: 720, maxWidth: '94vw', padding: 24 }}>
@@ -125,7 +137,7 @@ const GameSelect = (): JSX.Element => {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
           {GAMES.map((g) => (
-            <GameTile key={g.id} game={g} onPlay={() => selectGame(g.id)} />
+            <GameTile key={g.id} game={g} onPlay={() => handlePlay(g)} />
           ))}
         </div>
       </div>

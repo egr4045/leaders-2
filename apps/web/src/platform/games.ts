@@ -1,7 +1,11 @@
 /**
  * Front-end game registry for the platform hub. Mirrors the server-side game manifest the
- * orchestrator will use (id, how to wake the game, idle policy). Adding a game = one entry here
- * plus its services — that's the scalability story (point 3). Only `playable` games can be entered.
+ * orchestrator uses (id, how to wake the game, idle policy). Adding a game = one entry here
+ * plus its services — that's the scalability story. Only `playable` games can be entered.
+ *
+ * `externalPort` marks a game that is its own SPA on its own origin (host:port). Selecting it
+ * wakes the game (orchestrator) then navigates there. `undefined` = the game lives inside this
+ * launcher app (CIVA).
  */
 export interface GameInfo {
   id: string;
@@ -10,6 +14,7 @@ export interface GameInfo {
   status: 'playable' | 'soon';
   accent: string;
   emoji: string;
+  externalPort?: number;
 }
 
 export const GAMES: GameInfo[] = [
@@ -22,19 +27,20 @@ export const GAMES: GameInfo[] = [
     emoji: '🌍',
   },
   {
+    id: 'svoyak',
+    name: 'Своя игра',
+    tagline: 'Quiz buzzer party · Jeopardy-style',
+    status: 'playable',
+    accent: '#49a05a',
+    emoji: '🧠',
+    externalPort: 8089,
+  },
+  {
     id: 'leaders',
     name: 'Leaders',
     tagline: 'Political decisions · live anchor',
     status: 'soon',
     accent: '#c9a23d',
     emoji: '🏛️',
-  },
-  {
-    id: 'detective',
-    name: 'Detective',
-    tagline: 'Social deduction',
-    status: 'soon',
-    accent: '#b0492e',
-    emoji: '🕵️',
   },
 ];
