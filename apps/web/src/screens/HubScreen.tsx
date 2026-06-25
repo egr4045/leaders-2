@@ -7,6 +7,9 @@ import { GameDetailsView } from '../components/GameDetailsView.js';
 import { enterGame } from '../net/orchestratorClient.js';
 import { getHandoff } from '../net/authClient.js';
 import { useSocialStore } from '../state/socialStore.js';
+import { SteamOverlay } from '../components/SteamOverlay.js';
+import { NavTab } from '../components/NavTab.js';
+import { ProfileView } from '../components/ProfileView.js';
 
 export const HubScreen = (): JSX.Element => {
   const selectGame = usePlatformStore((s) => s.selectGame);
@@ -15,7 +18,7 @@ export const HubScreen = (): JSX.Element => {
   
   // Local state for library navigation (doesn't start the game yet)
   const [viewedGameId, setViewedGameId] = useState<string | null>(GAMES[0].id);
-  const [activeTab, setActiveTab] = useState<'store' | 'library' | 'community' | 'contact'>('library');
+  const [activeTab, setActiveTab] = useState<'store' | 'library' | 'community' | 'contact' | 'profile'>('library');
 
   const handlePlay = (g: GameInfo): void => {
     if (g.externalPort) {
@@ -53,7 +56,7 @@ export const HubScreen = (): JSX.Element => {
           <div style={{ fontSize: 24, fontWeight: 800, color: '#fff', letterSpacing: 2, marginRight: 24 }}>NEXUS</div>
           <NavTab label="БИБЛИОТЕКА" active={activeTab === 'library'} onClick={() => setActiveTab('library')} />
           <NavTab label="СВЯЗЬ С АВТОРОМ" active={activeTab === 'contact'} onClick={() => setActiveTab('contact')} />
-          <NavTab label={me?.displayName?.toUpperCase() || 'ПРОФИЛЬ'} active={false} onClick={() => {}} />
+          <NavTab label={me?.displayName?.toUpperCase() || 'ПРОФИЛЬ'} active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} />
         </div>
 
       </div>
@@ -78,12 +81,15 @@ export const HubScreen = (): JSX.Element => {
         <ContactAuthorView />
       )}
 
+      {activeTab === 'profile' && (
+        <ProfileView />
+      )}
+
       <FriendsWidget />
     </div>
   );
 };
 
-const NavTab = ({ label, active, onClick }: { label: string, active: boolean, onClick: () => void }) => (
   <div 
     onClick={onClick}
     style={{ 
