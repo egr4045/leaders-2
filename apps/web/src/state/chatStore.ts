@@ -5,6 +5,9 @@ export interface ChatMessage {
   senderId: string;
   text: string;
   timestamp: string;
+  status?: 'sent' | 'delivered' | 'read';
+  reactions?: Record<string, number>;
+  attachment?: { type: 'image' | 'invite' | 'voice', url?: string, label?: string };
 }
 
 export interface ChatSession {
@@ -29,14 +32,27 @@ interface ChatState {
 // Initial mock data
 const MOCK_SESSIONS: ChatSession[] = [
   {
+    id: 'chat_dm_friend_s1mple',
+    type: 'dm',
+    name: 'S1mple',
+    participants: ['user_me', 'friend_s1mple'],
+    avatar: '🎯',
+    messages: [
+      { id: 'm1', senderId: 'friend_s1mple', text: 'Пойдем рейтинг катать?', timestamp: 'Вчера, 20:45' },
+      { id: 'm2', senderId: 'user_me', text: 'Давай, я зайду через 5 минут', timestamp: 'Вчера, 20:46', status: 'read', reactions: { '👍': 1 } },
+      { id: 'm3', senderId: 'friend_s1mple', text: 'Кидаю инвайт', timestamp: 'Вчера, 20:50', attachment: { type: 'invite', label: 'Приглашение в лобби (CIVA 2)' } }
+    ]
+  },
+  {
     id: 'chat_group_1',
     type: 'group',
     name: 'Турнир CS2 (Группа)',
     participants: ['user_me', 'friend_s1mple', 'friend_2'],
     avatar: '🏆',
     messages: [
-      { id: 'm1', senderId: 'friend_s1mple', text: 'Завтра играем в 20:00', timestamp: '19:30' },
-      { id: 'm2', senderId: 'user_me', text: 'Понял, буду', timestamp: '19:31' }
+      { id: 'gm1', senderId: 'CyberCat', text: 'Завтра играем в 20:00', timestamp: '19:30' },
+      { id: 'gm2', senderId: 'user_me', text: 'Понял, буду', timestamp: '19:31', status: 'read' },
+      { id: 'gm3', senderId: 'CyberCat', text: 'Голосовое сообщение', timestamp: '19:32', attachment: { type: 'voice', label: '0:14' } }
     ]
   }
 ];
@@ -74,7 +90,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         if (s.id === chatId) {
           return {
             ...s,
-            messages: [...s.messages, { id: Math.random().toString(), senderId, text, timestamp: 'Только что' }]
+            messages: [...s.messages, { id: Math.random().toString(), senderId, text, timestamp: 'Только что', status: 'sent' }]
           };
         }
         return s;

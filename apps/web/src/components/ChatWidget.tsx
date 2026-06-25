@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useChatStore } from '../state/chatStore.js';
 import { useSocialStore } from '../state/socialStore.js';
+import { useMenuStore } from '../state/menuStore.js';
 
 export const ChatWidget = (): JSX.Element | null => {
   const isOpen = useChatStore(s => s.isOpen);
@@ -9,6 +10,7 @@ export const ChatWidget = (): JSX.Element | null => {
   const openChat = useChatStore(s => s.openChat);
   const toggleChat = useChatStore(s => s.toggleChat);
   const sendMessage = useChatStore(s => s.sendMessage);
+  const openMenu = useMenuStore(s => s.openMenu);
 
   const me = useSocialStore(s => s.me);
   
@@ -18,6 +20,30 @@ export const ChatWidget = (): JSX.Element | null => {
   const [callState, setCallState] = useState<'none' | 'audio' | 'video'>('none');
   const [micMuted, setMicMuted] = useState(false);
   const [camMuted, setCamMuted] = useState(false);
+  
+  // Dragging state
+  const [position, setPosition] = useState({ x: window.innerWidth - 650, y: window.innerHeight - 500 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [size, setSize] = useState({ w: 600, h: 450 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDragging) {
+        setPosition({ x: e.clientX - dragOffset.x, y: e.clientY - dragOffset.y });
+      }
+    };
+    const handleMouseUp = () => setIsDragging(false);
+    
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragOffset]);
 
   if (!isOpen) return null;
 
@@ -34,22 +60,29 @@ export const ChatWidget = (): JSX.Element | null => {
       className="civa-fade-in"
       style={{
         position: 'fixed',
-        right: 300, // Left of Friends widget
-        bottom: 24,
-        width: 600,
-        height: 450,
+        left: position.x,
+        top: position.y,
+        width: size.w,
+        height: size.h,
         background: '#1b2838',
         border: '1px solid #3d4450',
-        borderRadius: '8px 8px 0 0',
-        boxShadow: '0 -4px 16px rgba(0,0,0,0.5)',
+        borderRadius: 8,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.8)',
         display: 'flex',
         overflow: 'hidden',
-        zIndex: 1000
+        zIndex: 1000,
+        resize: 'both' // Enables native CSS resizing on bottom-right corner!
       }}
     >
       {/* Sidebar: Dialogs */}
-      <div style={{ width: 200, background: '#171a21', borderRight: '1px solid #3d4450', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: 16, borderBottom: '1px solid #3d4450', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ width: 220, background: '#171a21', borderRight: '1px solid #3d4450', display: 'flex', flexDirection: 'column' }}>
+        <div 
+          onMouseDown={(e) => {
+            setIsDragging(true);
+            setDragOffset({ x: e.clientX - position.x, y: e.clientY - position.y });
+          }}
+          style={{ padding: 16, borderBottom: '1px solid #3d4450', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'grab', background: '#23262e' }}
+        >
           <div style={{ fontWeight: 700, fontSize: '14px', color: '#fff' }}>Мессенджер</div>
           <button onClick={toggleChat} style={{ background: 'none', border: 'none', color: '#8f98a0', cursor: 'pointer', fontSize: 16 }}>×</button>
         </div>
@@ -167,40 +200,97 @@ export const ChatWidget = (): JSX.Element | null => {
               ) : (
                 /* --- CHAT VIEW --- */
                 <>
-                  <div style={{ flex: 1, padding: 16, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ flex: 1, padding: '16px 16px 32px 16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {activeSession.messages.map(m => {
                       const isMe = m.senderId === me?.accountId;
                       const isSys = m.senderId === 'system';
                       if (isSys) {
                         return <div key={m.id} style={{ textAlign: 'center', color: '#6c7784', fontSize: '12px', margin: '8px 0' }}>{m.text}</div>;
                       }
+                      
+                      const showReadReceipt = isMe && m.status;
+                      const checkmarks = m.status === 'read' ? '✔✔' : (m.status === 'delivered' ? '✔✔' : '✔');
+                      const checkColor = m.status === 'read' ? '#54a5d4' : '#8f98a0';
+
                       return (
-                        <div key={m.id} style={{ alignSelf: isMe ? 'flex-end' : 'flex-start', maxWidth: '70%' }}>
+                        <div 
+                          key={m.id} 
+                          style={{ alignSelf: isMe ? 'flex-end' : 'flex-start', maxWidth: '75%', position: 'relative' }}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            openMenu(e.clientX, e.clientY, [
+                              { label: '↩️ Ответить', action: () => alert('Ответить на сообщение') },
+                              { label: '📋 Копировать', action: () => navigator.clipboard.writeText(m.text) },
+                              ...(isMe ? [{ label: '✏️ Редактировать', action: () => alert('Редактировать') }] : []),
+                              { separator: true, action: () => {} },
+                              { label: '🗑️ Удалить', action: () => alert('Сообщение удалено'), danger: true }
+                            ]);
+                          }}
+                        >
                           {!isMe && activeSession.type === 'group' && <div style={{ fontSize: '11px', color: '#8f98a0', marginBottom: 2 }}>{m.senderId}</div>}
-                          <div style={{ background: isMe ? '#2a475e' : '#3d4450', padding: '8px 12px', borderRadius: isMe ? '8px 8px 0 8px' : '8px 8px 8px 0', fontSize: '13px', color: '#fff' }}>
-                            {m.text}
+                          
+                          <div style={{ background: isMe ? '#2a475e' : '#3d4450', padding: '10px 14px', borderRadius: isMe ? '12px 12px 0 12px' : '12px 12px 12px 0', fontSize: '13px', color: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.2)' }}>
+                            {/* Attachments */}
+                            {m.attachment && (
+                              <div style={{ background: 'rgba(0,0,0,0.2)', padding: 12, borderRadius: 8, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12, border: '1px solid rgba(255,255,255,0.1)' }}>
+                                <div style={{ fontSize: 24 }}>{m.attachment.type === 'voice' ? '🎙️' : (m.attachment.type === 'invite' ? '🎮' : '🖼️')}</div>
+                                <div style={{ fontWeight: 600 }}>{m.attachment.label}</div>
+                                {m.attachment.type === 'voice' && <div style={{ flex: 1, height: 4, background: '#54a5d4', borderRadius: 2 }} />}
+                                {m.attachment.type === 'invite' && <button style={{ background: '#5c7e10', border: 'none', color: '#fff', padding: '4px 12px', borderRadius: 4, cursor: 'pointer', fontSize: '11px', marginLeft: 'auto' }}>Принять</button>}
+                              </div>
+                            )}
+                            {/* Text */}
+                            <div style={{ lineHeight: 1.4 }}>{m.text}</div>
                           </div>
-                          <div style={{ fontSize: '10px', color: '#6c7784', textAlign: isMe ? 'right' : 'left', marginTop: 4 }}>{m.timestamp}</div>
+                          
+                          {/* Footer: Reactions & Timestamp */}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMe ? 'flex-end' : 'flex-start', marginTop: 4, gap: 8 }}>
+                            {m.reactions && Object.entries(m.reactions).map(([emoji, count]) => (
+                              <div key={emoji} style={{ background: '#23262e', border: '1px solid #3d4450', borderRadius: 12, padding: '2px 8px', fontSize: '11px', color: '#dcdedf', cursor: 'pointer' }}>
+                                {emoji} {count}
+                              </div>
+                            ))}
+                            <div style={{ fontSize: '11px', color: '#6c7784', display: 'flex', alignItems: 'center', gap: 4 }}>
+                              {m.timestamp}
+                              {showReadReceipt && <span style={{ color: checkColor, fontWeight: 700, letterSpacing: -1 }}>{checkmarks}</span>}
+                            </div>
+                          </div>
                         </div>
                       );
                     })}
                   </div>
 
                   {/* Input */}
-                  <div style={{ padding: 12, background: '#23262e', borderTop: '1px solid #3d4450', display: 'flex', gap: 8 }}>
+                  <div style={{ padding: '12px 16px', background: '#171a21', borderTop: '1px solid #3d4450', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <button 
+                      title="Прикрепить"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        openMenu(e.clientX, e.clientY - 120, [
+                          { label: '🖼️ Отправить картинку', action: () => alert('Мок загрузки картинки') },
+                          { label: '🎮 Пригласить в лобби', action: () => alert('Инвайт отправлен') },
+                          { label: '🎙️ Отправить голосовое', action: () => alert('Запись...') },
+                        ]);
+                      }}
+                      style={{ background: 'transparent', border: 'none', color: '#8f98a0', cursor: 'pointer', fontSize: 20 }}
+                    >
+                      📎
+                    </button>
                     <input 
                       type="text" 
                       placeholder="Написать сообщение..." 
                       value={inputText}
                       onChange={e => setInputText(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleSend()}
-                      style={{ flex: 1, background: '#1b2838', border: '1px solid #3d4450', borderRadius: 4, padding: '8px 12px', color: '#fff', outline: 'none' }}
+                      style={{ flex: 1, background: '#23262e', border: '1px solid #3d4450', borderRadius: 20, padding: '10px 16px', color: '#fff', outline: 'none', fontSize: '13px' }}
                     />
                     <button 
                       onClick={handleSend}
-                      style={{ background: '#2AABEE', color: '#fff', border: 'none', padding: '0 16px', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
+                      style={{ background: '#2AABEE', color: '#fff', border: 'none', width: 40, height: 40, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
-                      Отправить
+                      ➤
                     </button>
                   </div>
                 </>

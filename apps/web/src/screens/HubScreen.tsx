@@ -65,42 +65,72 @@ export const HubScreen = (): JSX.Element => {
         ]);
       }}
     >
-      
       {/* Global Steam-like Nav Bar */}
-      <div style={{ background: '#171a21', height: 104, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ background: '#171a21', display: 'flex', flexDirection: 'column' }}>
         
         {/* Top Row (System) */}
-        <div style={{ height: 40, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '0 16px', fontSize: '11px', gap: 16 }}>
-          <div 
-            style={{ cursor: 'pointer' }} 
-            onClick={() => setShowLogoutConfirm(true)}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              openMenu(e.clientX, e.clientY, [
-                { label: '🟢 Статус: В сети', action: () => alert('Статус изменен') },
-                { label: '🌙 Статус: Не беспокоить', action: () => alert('Статус изменен') },
-                { label: '👻 Статус: Невидимка', action: () => alert('Статус изменен') },
-                { separator: true, action: () => {} },
-                { label: '✏️ Редактировать профиль', action: () => setActiveTab('profile') },
-                { label: '🔗 Скопировать мой ID', action: () => navigator.clipboard.writeText('ID: 12345') },
-                { separator: true, action: () => {} },
-                { label: '🚪 Выйти из аккаунта', action: () => setShowLogoutConfirm(true), danger: true }
-              ]);
-            }}
-          >
-            {me?.displayName} ▼
+        <div style={{ height: 40, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 16px', fontSize: '11px', borderBottom: '1px solid #3d4450' }}>
+          
+          {/* Global Search */}
+          <div style={{ display: 'flex', alignItems: 'center', background: '#23262e', border: '1px solid #3d4450', borderRadius: 4, padding: '4px 12px', width: 300, gap: 8 }}>
+            <span style={{ color: '#6c7784' }}>🔍</span>
+            <input 
+              type="text" 
+              placeholder="Глобальный поиск (Cmd+K)..." 
+              style={{ background: 'transparent', border: 'none', color: '#fff', outline: 'none', width: '100%', fontSize: '12px' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+            {/* Notification Center */}
+            <div 
+              style={{ position: 'relative', cursor: 'pointer', color: '#dcdedf', fontSize: 16 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                openMenu(e.clientX, e.clientY + 20, [
+                  { label: '🔔 Нет новых уведомлений', action: () => {} },
+                  { separator: true, action: () => {} },
+                  { label: '⚙️ Настройки уведомлений', action: () => alert('Открытие настроек...') }
+                ]);
+              }}
+            >
+              🔔
+              <div style={{ position: 'absolute', top: -2, right: -4, background: '#2AABEE', width: 6, height: 6, borderRadius: '50%' }} />
+            </div>
+
+            {/* Profile Menu */}
+            <div 
+              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }} 
+              onClick={(e) => {
+                e.stopPropagation();
+                openMenu(e.clientX, e.clientY + 20, [
+                  { label: '🟢 В сети', action: () => alert('Статус изменен') },
+                  { label: '🌙 Не беспокоить', action: () => alert('Статус изменен') },
+                  { separator: true, action: () => {} },
+                  { label: '⚙️ Настройки Хаба', action: () => alert('Открыты глобальные настройки Хаба') },
+                  { label: '🔗 Скопировать мой ID', action: () => navigator.clipboard.writeText('ID: 12345') },
+                  { separator: true, action: () => {} },
+                  { label: '🚪 Выйти из аккаунта', action: () => setShowLogoutConfirm(true), danger: true }
+                ]);
+              }}
+            >
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontWeight: 700, color: '#dcdedf' }}>{me?.displayName || 'Загрузка...'}</div>
+              </div>
+              <div style={{ width: 24, height: 24, borderRadius: 4, background: '#3d4450', overflow: 'hidden' }}>
+                <img src={me?.avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Main Nav Row */}
-        <div className="mobile-nav" style={{ flex: 1, display: 'flex', alignItems: 'center', padding: '0 24px', gap: 32, overflowX: 'auto', whiteSpace: 'nowrap' }}>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#fff', letterSpacing: 2, marginRight: 24 }}>NEXUS</div>
+        <div className="mobile-nav" style={{ height: 64, display: 'flex', alignItems: 'center', padding: '0 24px', gap: 32, overflowX: 'auto', whiteSpace: 'nowrap' }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#fff', letterSpacing: 2, marginRight: 24 }}>CIVA</div>
           <NavTab label="БИБЛИОТЕКА" active={activeTab === 'library'} onClick={() => setActiveTab('library')} />
           <NavTab label="СВЯЗЬ С АВТОРОМ" active={activeTab === 'contact'} onClick={() => setActiveTab('contact')} />
           <NavTab label={me?.displayName?.toUpperCase() || 'ПРОФИЛЬ'} active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} />
         </div>
-
       </div>
 
       {activeTab === 'library' && (
