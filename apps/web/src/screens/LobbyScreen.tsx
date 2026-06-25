@@ -8,7 +8,8 @@ import { GAMES, type GameInfo } from '../platform/games.js';
 import { FriendsSidebar } from '../platform/FriendsSidebar.js';
 import { routeToInvite } from '../platform/inviteRouting.js';
 import { enterGame } from '../net/orchestratorClient.js';
-import { getHandoff } from '../net/authClient.js';
+import { AuthScreen } from './AuthScreen.js';
+import { HubScreen } from './HubScreen.js';
 import { resolveInvite } from '../net/inviteClient.js';
 
 const NATION_FLAG: Record<string, string> = {
@@ -85,10 +86,10 @@ export const LobbyScreen = (): JSX.Element => {
     })();
   }, [account?.accountId]);
 
-  if (!account) return <NameEntry />;
-  if (!selectedGame) return <GameSelect />;
+  if (!account) return <AuthScreen />;
+  if (!selectedGame) return <HubScreen />;
   if (selectedGame === 'civa') return <CivaLobby />;
-  return <GameSelect />;
+  return <HubScreen />;
 };
 
 const Err = ({ error }: { error: string | null }): JSX.Element | null =>
@@ -96,127 +97,7 @@ const Err = ({ error }: { error: string | null }): JSX.Element | null =>
     <div style={{ color: 'var(--c-negative)', fontSize: 'var(--fs-sm)', marginTop: 8 }}>⚠ {error}</div>
   ) : null;
 
-// --- Shared login -----------------------------------------------------------
-const NameEntry = (): JSX.Element => {
-  const login = usePlatformStore((s) => s.login);
-  const status = usePlatformStore((s) => s.status);
-  const error = usePlatformStore((s) => s.error);
-  const [name, setName] = useState('');
-  const go = () => name.trim() && void login(name.trim());
 
-  return (
-    <div style={shell}>
-      <div className="civa-panel civa-fade-in" style={{ width: 380, padding: 24, textAlign: 'center' }}>
-        <h1 style={{ fontSize: 'var(--fs-xxl)', fontWeight: 800, letterSpacing: 1 }}>Game Hub</h1>
-        <p style={{ color: 'var(--c-text-muted)', margin: '8px 0 18px' }}>
-          One account, many games. Choose a display name.
-        </p>
-        <input
-          autoFocus
-          value={name}
-          placeholder="Your name"
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && go()}
-          style={inputStyle}
-        />
-        <button
-          disabled={!name.trim() || status === 'logging-in'}
-          onClick={go}
-          style={{ ...primaryBtn, width: '100%', marginTop: 12, opacity: !name.trim() ? 0.5 : 1 }}
-        >
-          {status === 'logging-in' ? 'Signing in…' : 'Enter ▸'}
-        </button>
-        <Err error={error} />
-      </div>
-    </div>
-  );
-};
-
-// --- Game selection (hub) ---------------------------------------------------
-const GameSelect = (): JSX.Element => {
-  const account = usePlatformStore((s) => s.account);
-  const selectGame = usePlatformStore((s) => s.selectGame);
-  const logout = usePlatformStore((s) => s.logout);
-
-  const handlePlay = (g: GameInfo): void => {
-    if (g.externalPort) {
-      // Wake the game (orchestrator), mint a short-lived handoff token, then navigate to its own
-      // origin carrying `?pt=` so it can sign you in via SSO (no second login).
-      void (async () => {
-        await enterGame(g.id);
-        const handoff = await getHandoff();
-        const base = `${window.location.protocol}//${window.location.hostname}:${g.externalPort}`;
-        window.location.href = handoff ? `${base}/?pt=${encodeURIComponent(handoff)}` : base;
-      })();
-    } else {
-      selectGame(g.id);
-    }
-  };
-
-  return (
-    <div style={shell}>
-      <div className="civa-panel civa-fade-in" style={{ width: 720, maxWidth: '70vw', padding: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 18 }}>
-          <h1 style={{ fontSize: 'var(--fs-xl)', fontWeight: 800 }}>Choose a game</h1>
-          <span style={{ marginLeft: 'auto', color: 'var(--c-text-muted)', fontSize: 'var(--fs-sm)' }}>
-            {account?.displayName} ·{' '}
-            <button onClick={logout} style={{ color: 'var(--c-accent)', fontSize: 'var(--fs-sm)' }}>
-              sign out
-            </button>
-          </span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-          {GAMES.map((g) => (
-            <GameTile key={g.id} game={g} onPlay={() => handlePlay(g)} />
-          ))}
-        </div>
-      </div>
-      <FriendsSidebar />
-    </div>
-  );
-};
-
-const GameTile = ({ game, onPlay }: { game: GameInfo; onPlay: () => void }): JSX.Element => {
-  const playable = game.status === 'playable';
-  return (
-    <button
-      disabled={!playable}
-      onClick={onPlay}
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-        padding: 18,
-        borderRadius: 'var(--r-lg)',
-        textAlign: 'left',
-        minHeight: 150,
-        border: `1px solid ${playable ? game.accent : 'var(--c-panel-border)'}`,
-        background: playable
-          ? `linear-gradient(160deg, ${game.accent}22, rgba(255,255,255,0.03))`
-          : 'rgba(255,255,255,0.02)',
-        opacity: playable ? 1 : 0.6,
-        cursor: playable ? 'pointer' : 'default',
-      }}
-    >
-      <span style={{ fontSize: 34 }}>{game.emoji}</span>
-      <span style={{ fontWeight: 800, fontSize: 'var(--fs-lg)' }}>{game.name}</span>
-      <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--c-text-muted)', flex: 1 }}>{game.tagline}</span>
-      <span
-        style={{
-          alignSelf: 'flex-start',
-          padding: '4px 10px',
-          borderRadius: 'var(--r-pill)',
-          fontSize: 'var(--fs-xs)',
-          fontWeight: 700,
-          background: playable ? game.accent : 'rgba(255,255,255,0.08)',
-          color: playable ? 'var(--c-text-inverse)' : 'var(--c-text-muted)',
-        }}
-      >
-        {playable ? 'Play ▸' : 'Coming soon'}
-      </span>
-    </button>
-  );
-};
 
 // --- CIVA lobby -------------------------------------------------------------
 const exitToHub = (): void => {

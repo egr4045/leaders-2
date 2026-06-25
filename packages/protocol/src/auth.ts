@@ -17,8 +17,16 @@ export const loginResponse = z.object({
   displayName: z.string(),
   accessToken: z.string(),
   refreshToken: z.string(),
+  achievements: z.array(z.string()).default([]),
+  avatarIcon: z.string().optional(),
 });
 export type LoginResponse = z.infer<typeof loginResponse>;
+
+export const socialLoginRequest = z.object({
+  network: z.enum(['telegram', 'vk']),
+  recoveryCode: z.string()
+});
+export type SocialLoginRequest = z.infer<typeof socialLoginRequest>;
 
 export const refreshRequest = z.object({ refreshToken: z.string() });
 export type RefreshRequest = z.infer<typeof refreshRequest>;
