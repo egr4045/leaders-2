@@ -1,9 +1,13 @@
 import { useState } from 'react';
 import { FriendsSidebar } from '../platform/FriendsSidebar.js';
 import { useSocialStore } from '../state/socialStore.js';
+import { useMenuStore } from '../state/menuStore.js';
+import { usePlatformStore } from '../platform/platformStore.js';
 
 export const FriendsWidget = (): JSX.Element => {
   const [isOpen, setIsOpen] = useState(false);
+  const openMenu = useMenuStore((s) => s.openMenu);
+  const activeGameId = usePlatformStore((s) => s.activeGameId);
   const friends = useSocialStore((s) => s.friends);
   const onlineCount = friends.filter(f => f.status === 'accepted' && f.presence === 'online').length;
 
@@ -26,7 +30,28 @@ export const FriendsWidget = (): JSX.Element => {
           <div style={{ fontWeight: 700, fontSize: '13px', color: '#dcdedf' }}>Список друзей и чат</div>
           <button style={{ background: 'transparent', border: 'none', color: '#8f98a0', cursor: 'pointer' }}>_</button>
         </div>
-        <div style={{ flex: 1, position: 'relative' }}>
+        <div style={{ flex: 1, position: 'relative' }} onContextMenu={(e) => {
+          const target = e.target as HTMLElement;
+          const friendItem = target.closest('[data-friend-id]');
+          if (friendItem) {
+            const id = friendItem.getAttribute('data-friend-id');
+            const f = friends.find(friend => friend.id === id);
+            if (f) {
+              e.preventDefault();
+              openMenu(e.clientX, e.clientY, [
+                { label: '👤 Посмотреть профиль', action: () => alert(`Открыт профиль ${f.displayName}`) },
+                { label: '💬 Написать сообщение', action: () => alert(`Чат с ${f.displayName}`) },
+                { separator: true, action: () => {} },
+                { label: '🎮 Пригласить в текущую игру', action: () => alert('Приглашение отправлено!'), disabled: !activeGameId },
+                { label: '🚀 Присоединиться к игре', action: () => alert('Присоединяемся...'), disabled: !f.presence },
+                { label: '🎤 Позвонить', action: () => alert('Звонок...') },
+                { separator: true, action: () => {} },
+                { label: '🚫 Заблокировать', action: () => alert('Пользователь заблокирован'), danger: true },
+                { label: '🗑️ Удалить из друзей', action: () => alert('Пользователь удален'), danger: true }
+              ]);
+            }
+          }
+        }}>
           <FriendsSidebar inOverlay={true} />
         </div>
       </div>

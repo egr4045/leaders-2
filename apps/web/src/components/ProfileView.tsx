@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { usePlatformStore } from '../platform/platformStore.js';
+import { useMenuStore } from '../state/menuStore.js';
 
 // Mock achievements data
 const ACHIEVEMENTS = [
@@ -12,6 +13,7 @@ const ACHIEVEMENTS = [
 
 export const ProfileView = (): JSX.Element => {
   const me = usePlatformStore((s) => s.me);
+  const openMenu = useMenuStore((s) => s.openMenu);
   
   const [avatar, setAvatar] = useState<string | null>(null);
   const [wallpaper, setWallpaper] = useState<string | null>(null);
@@ -196,6 +198,14 @@ export const ProfileView = (): JSX.Element => {
                 title={`${ach.name} - ${ach.desc}`}
                 onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
                 onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  openMenu(e.clientX, e.clientY, [
+                    { label: '👑 Сделать титульной', action: () => setTitleAchievement(ach.id) },
+                    { label: '✈️ Поделиться в Telegram', action: () => alert('Поделились в ТГ') }
+                  ]);
+                }}
                 >
                   {ach.icon}
                 </div>

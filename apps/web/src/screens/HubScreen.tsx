@@ -9,13 +9,17 @@ import { getHandoff } from '../net/authClient.js';
 import { useSocialStore } from '../state/socialStore.js';
 import { SteamOverlay } from '../components/SteamOverlay.js';
 import { ProfileView } from '../components/ProfileView.js';
+import { ContextMenu } from '../components/ContextMenu.js';
+import { useMenuStore } from '../state/menuStore.js';
 
 export const HubScreen = (): JSX.Element => {
   const selectGame = usePlatformStore((s) => s.selectGame);
   const logout = usePlatformStore((s) => s.logout);
   const me = useSocialStore((s) => s.me);
+  const openMenu = useMenuStore((s) => s.openMenu);
   
   const [showLinkModal, setShowLinkModal] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     // Show one-time modal per session
@@ -45,14 +49,42 @@ export const HubScreen = (): JSX.Element => {
   const viewedGame = GAMES.find(g => g.id === viewedGameId) || null;
 
   return (
-    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: '#1b2838', color: '#dcdedf', fontFamily: 'Motiva Sans, Arial, Helvetica, sans-serif', pointerEvents: 'auto' }} className="civa-fade-in">
+    <div 
+      style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: '#1b2838', color: '#dcdedf', fontFamily: 'Motiva Sans, Arial, Helvetica, sans-serif', pointerEvents: 'auto' }} 
+      className="civa-fade-in"
+      onContextMenu={(e) => {
+        e.preventDefault();
+        openMenu(e.clientX, e.clientY, [
+          { label: '🔄 Перезагрузить Хаб', action: () => window.location.reload() }
+        ]);
+      }}
+    >
       
       {/* Global Steam-like Nav Bar */}
       <div style={{ background: '#171a21', height: 104, display: 'flex', flexDirection: 'column' }}>
         
         {/* Top Row (System) */}
         <div style={{ height: 40, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '0 16px', fontSize: '11px', gap: 16 }}>
-          <div style={{ cursor: 'pointer' }} onClick={logout}>{me?.displayName} ▼</div>
+          <div 
+            style={{ cursor: 'pointer' }} 
+            onClick={() => setShowLogoutConfirm(true)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              openMenu(e.clientX, e.clientY, [
+                { label: '🟢 Статус: В сети', action: () => alert('Статус изменен') },
+                { label: '🌙 Статус: Не беспокоить', action: () => alert('Статус изменен') },
+                { label: '👻 Статус: Невидимка', action: () => alert('Статус изменен') },
+                { separator: true, action: () => {} },
+                { label: '✏️ Редактировать профиль', action: () => setActiveTab('profile') },
+                { label: '🔗 Скопировать мой ID', action: () => navigator.clipboard.writeText('ID: 12345') },
+                { separator: true, action: () => {} },
+                { label: '🚪 Выйти из аккаунта', action: () => setShowLogoutConfirm(true), danger: true }
+              ]);
+            }}
+          >
+            {me?.displayName} ▼
+          </div>
         </div>
 
         {/* Main Nav Row */}
@@ -114,7 +146,21 @@ export const HubScreen = (): JSX.Element => {
         </div>
       )}
 
+      {showLogoutConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="civa-fade-in" style={{ width: 400, background: '#1b2838', border: '1px solid #3d4450', borderRadius: 8, padding: 32, textAlign: 'center' }}>
+            <h2 style={{ color: '#fff', margin: '0 0 16px 0', fontSize: 20 }}>Выход из аккаунта</h2>
+            <p style={{ color: '#8f98a0', marginBottom: 24, fontSize: 14 }}>Вы действительно хотите выйти из аккаунта?</p>
+            <div style={{ display: 'flex', gap: 16, justifyContent: 'center' }}>
+              <button onClick={() => setShowLogoutConfirm(false)} style={{ background: '#3d4450', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>Отмена</button>
+              <button onClick={logout} style={{ background: '#ff5c5c', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>Выйти</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <FriendsWidget />
+      <ContextMenu />
     </div>
   );
 };

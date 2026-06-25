@@ -2,7 +2,8 @@ import { useState, type CSSProperties } from 'react';
 import type { social } from '@civa/protocol';
 import { useSocialStore } from '../state/socialStore.js';
 import { routeToInvite } from './inviteRouting.js';
-import { showContextMenu } from '../components/ContextMenu.js';
+import { useMenuStore } from '../state/menuStore.js';
+import { usePlatformStore } from './platformStore.js';
 
 const inputStyle: CSSProperties = {
   flex: 1,
@@ -44,6 +45,8 @@ const activityText = (f: social.Friend): string => {
 
 export const FriendsSidebar = ({ inOverlay = false }: { inOverlay?: boolean }): JSX.Element => {
   const me = useSocialStore((s) => s.me);
+  const openMenu = useMenuStore((s) => s.openMenu);
+  const activeGameId = usePlatformStore((s) => s.activeGameId);
   const friends = useSocialStore((s) => s.friends);
   const invites = useSocialStore((s) => s.invites);
   const status = useSocialStore((s) => s.status);
@@ -75,11 +78,18 @@ export const FriendsSidebar = ({ inOverlay = false }: { inOverlay?: boolean }): 
   };
 
   const handleFriendContext = (e: React.MouseEvent, f: social.Friend) => {
-    showContextMenu(e, [
-      { label: 'Написать сообщение', onClick: () => console.log('Message', f.accountId) },
-      { label: 'Посмотреть профиль', onClick: () => console.log('Profile', f.accountId) },
-      { label: 'Пригласить в игру', onClick: () => console.log('Invite', f.accountId), disabled: f.presence === 'offline' },
-      { label: 'Удалить из друзей', onClick: () => removeFriend(f.accountId), color: '#ff5c5c' }
+    e.preventDefault();
+    e.stopPropagation();
+    openMenu(e.clientX, e.clientY, [
+      { label: '👤 Посмотреть профиль', action: () => alert(`Открыт профиль ${f.displayName}`) },
+      { label: '💬 Написать сообщение', action: () => alert(`Чат с ${f.displayName}`) },
+      { separator: true, action: () => {} },
+      { label: '🎮 Пригласить в текущую игру', action: () => alert('Приглашение отправлено!'), disabled: !activeGameId },
+      { label: '🚀 Присоединиться к игре', action: () => alert('Присоединяемся...'), disabled: !f.presence },
+      { label: '🎤 Позвонить', action: () => alert('Звонок...') },
+      { separator: true, action: () => {} },
+      { label: '🚫 Заблокировать', action: () => alert('Пользователь заблокирован'), danger: true },
+      { label: '🗑️ Удалить из друзей', action: () => removeFriend(f.accountId), danger: true }
     ]);
   };
 

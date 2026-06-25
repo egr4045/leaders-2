@@ -1,7 +1,9 @@
 import { useState, type CSSProperties } from 'react';
 import { GAMES, type GameInfo } from '../platform/games.js';
+import { useMenuStore } from '../state/menuStore.js';
 
 export const LibrarySidebar = ({ selectedGameId, onSelectGame }: { selectedGameId: string | null, onSelectGame: (id: string) => void }): JSX.Element => {
+  const openMenu = useMenuStore((s) => s.openMenu);
   const [search, setSearch] = useState('');
 
   const filteredGames = GAMES.filter(g => g.name.toLowerCase().includes(search.toLowerCase()));
@@ -80,8 +82,17 @@ const GameListItem = ({ game, selected, onClick }: { game: GameInfo, selected: b
       }}
       onMouseOver={(e) => { if(!selected) e.currentTarget.style.background = '#23262e'; }}
       onMouseOut={(e) => { if(!selected) e.currentTarget.style.background = 'transparent'; }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openMenu(e.clientX, e.clientY, [
+          { label: '▶️ Играть', action: () => alert('Играть') },
+          { label: '🌟 Добавить в Избранное', action: () => alert('В избранное') },
+          { label: '💬 Открыть обсуждения', action: () => alert('Обсуждения') }
+        ]);
+      }}
     >
-      <div style={{ width: 16, height: 16, fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: 32, height: 32, background: game.accent, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
         {game.emoji}
       </div>
       <div style={{ fontSize: '13px', fontWeight: selected ? 600 : 400 }}>

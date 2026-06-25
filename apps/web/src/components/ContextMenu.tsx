@@ -1,95 +1,86 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef } from 'react';
+import { useMenuStore } from '../state/menuStore.js';
 
-export interface ContextMenuItem {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  color?: string;
-}
-
-interface ContextMenuState {
-  x: number;
-  y: number;
-  items: ContextMenuItem[];
-}
-
-let openMenu: ((state: ContextMenuState | null) => void) | null = null;
-
-export const showContextMenu = (e: React.MouseEvent, items: ContextMenuItem[]) => {
-  e.preventDefault();
-  e.stopPropagation();
-  if (openMenu) {
-    openMenu({ x: e.clientX, y: e.clientY, items });
-  }
-};
-
-export const ContextMenuProvider = (): JSX.Element | null => {
-  const [state, setState] = useState<ContextMenuState | null>(null);
+export const ContextMenu = (): JSX.Element | null => {
+  const { menu, closeMenu } = useMenuStore();
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    openMenu = setState;
-    const close = () => setState(null);
-    window.addEventListener('click', close);
-    window.addEventListener('contextmenu', close);
-    return () => {
-      openMenu = null;
-      window.removeEventListener('click', close);
-      window.removeEventListener('contextmenu', close);
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        closeMenu();
+      }
     };
-  }, []);
+    
+    // Close on any click outside or inside if we don't prevent it
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [closeMenu]);
 
-  if (!state) return null;
+  if (!menu) return null;
+
+  // Simple bounds checking so menu doesn't go off screen
+  const x = Math.min(menu.x, window.innerWidth - 220);
+  const y = Math.min(menu.y, window.innerHeight - (menu.items.length * 36));
 
   return (
-    <div
+    <div 
+      ref={menuRef}
       className="civa-fade-in"
       style={{
         position: 'fixed',
-        left: Math.min(state.x, window.innerWidth - 200),
-        top: Math.min(state.y, window.innerHeight - (state.items.length * 36 + 16)),
-        zIndex: 9999,
-        background: '#1a1f29', // Steam-like dark
+        left: x,
+        top: y,
+        width: 220,
+        background: '#1b2838',
         border: '1px solid #3d4450',
-        boxShadow: '0 4px 16px rgba(0,0,0,0.8)',
-        padding: '6px 0',
-        minWidth: 160,
+        borderRadius: 4,
+        boxShadow: '0 8px 16px rgba(0,0,0,0.8)',
+        zIndex: 9999,
+        padding: '4px 0',
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'column'
       }}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      }}
+      onContextMenu={(e) => e.preventDefault()} // prevent default inside our own menu
     >
-      {state.items.map((item, i) => (
-        <button
-          key={i}
-          disabled={item.disabled}
-          onClick={(e) => {
-            e.stopPropagation();
-            item.onClick();
-            setState(null);
-          }}
-          style={{
-            padding: '8px 16px',
-            textAlign: 'left',
-            color: item.disabled ? '#555' : (item.color || '#dcdedf'),
-            background: 'transparent',
-            border: 'none',
-            fontSize: '13px',
-            cursor: item.disabled ? 'default' : 'pointer',
-            transition: 'background 0.1s',
-          }}
-          onMouseOver={(e) => {
-            if (!item.disabled) e.currentTarget.style.background = '#3d4450';
-          }}
-          onMouseOut={(e) => {
-            if (!item.disabled) e.currentTarget.style.background = 'transparent';
-          }}
-        >
-          {item.label}
-        </button>
-      ))}
+      {menu.items.map((item, i) => {
+        if (item.separator) {
+          return <div key={i} style={{ height: 1, background: '#3d4450', margin: '4px 0' }} />;
+        }
+        
+        return (
+          <div
+            key={i}
+            onClick={() => {
+              if (item.disabled) return;
+              item.action();
+              closeMenu();
+            }}
+            style={{
+              padding: '8px 16px',
+              fontSize: '13px',
+              color: item.disabled ? '#6c7784' : (item.danger ? '#ff5c5c' : '#dcdedf'),
+              cursor: item.disabled ? 'default' : 'pointer',
+              background: 'transparent',
+              transition: 'background 0.1s, color 0.1s'
+            }}
+            onMouseOver={(e) => {
+              if (!item.disabled) {
+                e.currentTarget.style.background = item.danger ? 'rgba(255, 92, 92, 0.2)' : '#2a475e';
+                e.currentTarget.style.color = '#fff';
+              }
+            }}
+            onMouseOut={(e) => {
+              if (!item.disabled) {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = item.danger ? '#ff5c5c' : '#dcdedf';
+              }
+            }}
+          >
+            {item.label}
+          </div>
+        );
+      })}
     </div>
   );
 };
