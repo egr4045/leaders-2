@@ -2,7 +2,7 @@
  * Auth client: passwordless dev login + session persistence. The accountId is stored so a reload
  * re-claims the *same* account (durable identity) — that's what lets the lobby restore your seat.
  */
-import type { LoginResponse } from '@civa/protocol';
+import type { HandoffResponse, LoginResponse } from '@civa/protocol';
 import { AUTH_URL } from './config.js';
 
 export interface Session {
@@ -37,4 +37,25 @@ export const login = async (displayName: string, accountId?: string): Promise<Se
   const session = (await res.json()) as LoginResponse;
   saveSession(session);
   return session;
+};
+
+/**
+ * Mint a short-lived handoff token to carry this session into another game (via its URL `?pt=` or a
+ * QR code). The long-lived access/refresh tokens never leave here — the target game exchanges the
+ * handoff token at its own `POST /auth/platform`. Returns null if not logged in / on failure.
+ */
+export const getHandoff = async (): Promise<string | null> => {
+  const s = loadSession();
+  if (!s) return null;
+  try {
+    const res = await fetch(`${AUTH_URL}/auth/handoff`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ refreshToken: s.refreshToken }),
+    });
+    if (!res.ok) return null;
+    return ((await res.json()) as HandoffResponse).handoffToken;
+  } catch {
+    return null;
+  }
 };

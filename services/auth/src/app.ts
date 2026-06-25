@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { Clock, Logger } from '@civa/shared-types';
-import { loginRequest, refreshRequest } from '@civa/protocol';
+import { handoffRequest, loginRequest, refreshRequest } from '@civa/protocol';
 import type { AuthCore } from '@civa/auth-core';
 import { TokenError } from '@civa/auth-core';
 import type { AccountStore } from './store.js';
@@ -90,6 +90,30 @@ async function handle(req: IncomingMessage, res: ServerResponse, deps: AppDeps):
     } catch (err) {
       const reason = err instanceof TokenError ? err.reason : 'invalid';
       send(res, 401, { code: 'unauthorized', message: `refresh ${reason}` });
+    }
+    return;
+  }
+
+  // Mint a short-lived handoff token (carries identity to another game via URL/QR). Authorized by
+  // the holder's refresh token; the target game exchanges it at its own POST /auth/platform.
+  if (method === 'POST' && url === '/auth/handoff') {
+    const parsed = handoffRequest.safeParse(await readJson(req));
+    if (!parsed.success) {
+      send(res, 400, { code: 'validation', message: 'invalid handoff' });
+      return;
+    }
+    try {
+      const claims = await deps.auth.verify(parsed.data.refreshToken);
+      if (claims.typ !== 'refresh') {
+        send(res, 401, { code: 'unauthorized', message: 'not a refresh token' });
+        return;
+      }
+      const handoffToken = await deps.auth.signHandoff(claims.sub, claims.name);
+      deps.logger.info('handoff', { accountId: claims.sub });
+      send(res, 200, { handoffToken, accountId: claims.sub, displayName: claims.name });
+    } catch (err) {
+      const reason = err instanceof TokenError ? err.reason : 'invalid';
+      send(res, 401, { code: 'unauthorized', message: `handoff ${reason}` });
     }
     return;
   }

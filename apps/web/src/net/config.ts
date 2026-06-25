@@ -17,3 +17,8 @@ export const AUTH_URL =
 export const LOBBY_URL =
   (import.meta.env.VITE_LOBBY_URL as string | undefined) ??
   (import.meta.env.DEV ? 'http://localhost:8082' : sameOrigin);
+
+/** Social service (friends + presence). Same-origin in prod via the gateway; localhost in dev. */
+export const SOCIAL_URL =
+  (import.meta.env.VITE_SOCIAL_URL as string | undefined) ??
+  (import.meta.env.DEV ? 'http://localhost:8083' : sameOrigin);

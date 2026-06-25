@@ -26,10 +26,29 @@ export type RefreshRequest = z.infer<typeof refreshRequest>;
 export const refreshResponse = z.object({ accessToken: z.string() });
 export type RefreshResponse = z.infer<typeof refreshResponse>;
 
+/**
+ * Handoff: mint a short-lived token to carry identity to *another* game (via a URL `?pt=` param or
+ * a QR code) without exposing the long-lived access/refresh tokens. The target game exchanges it at
+ * its own `POST /auth/platform` for a game-native session. Authorized by the holder's refresh token.
+ */
+export const handoffRequest = z.object({ refreshToken: z.string() });
+export type HandoffRequest = z.infer<typeof handoffRequest>;
+
+export const handoffResponse = z.object({
+  handoffToken: z.string(),
+  accountId: z.string(),
+  displayName: z.string(),
+});
+export type HandoffResponse = z.infer<typeof handoffResponse>;
+
 /** Verified JWT claims. `sub` is the accountId. */
 export interface AuthClaims {
   sub: string;
   name: string;
-  /** 'access' | 'refresh' — refresh tokens cannot authenticate a socket. */
-  typ: 'access' | 'refresh';
+  /**
+   * - `access` — authenticates a socket/request.
+   * - `refresh` — only mints new access/handoff tokens; cannot authenticate a socket.
+   * - `handoff` — short-lived, single hop to another game's `/auth/platform`.
+   */
+  typ: 'access' | 'refresh' | 'handoff';
 }

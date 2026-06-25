@@ -7,6 +7,8 @@ import { randomUUID } from 'node:crypto';
  */
 export type RoomStatus = 'waiting' | 'starting' | 'started';
 
+export type RoomVisibility = 'public' | 'private';
+
 export interface PlayerRecord {
   accountId: string;
   displayName: string;
@@ -15,6 +17,8 @@ export interface PlayerRecord {
   /** Connected socket ids for this account (>1 = multi-device, 0 = disconnected). */
   sockets: Set<string>;
   graceTimer?: ReturnType<typeof setTimeout>;
+  /** A filler bot — auto-ready, auto-nation, no real account/socket. */
+  isBot?: boolean;
 }
 
 export interface RoomRecord {
@@ -24,6 +28,12 @@ export interface RoomRecord {
   status: RoomStatus;
   players: Map<string, PlayerRecord>;
   sessionId?: string;
+  visibility: RoomVisibility;
+  autostart: boolean;
+  /** Seconds shown during the auto-start countdown (server-managed), else undefined. */
+  countdown?: number;
+  /** Server-only auto-start timer (not on the wire). */
+  startTimer?: ReturnType<typeof setTimeout>;
 }
 
 export interface LobbyStore {
@@ -47,6 +57,8 @@ export const createMemoryLobbyStore = (): LobbyStore => {
         hostAccountId,
         status: 'waiting',
         players: new Map(),
+        visibility: 'public',
+        autostart: true,
       };
       rooms.set(room.id, room);
       return room;

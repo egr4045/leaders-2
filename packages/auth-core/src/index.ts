@@ -13,6 +13,8 @@ export interface AuthConfig {
   /** jose time strings, e.g. '15m', '30d'. */
   accessTtl: string;
   refreshTtl: string;
+  /** Short-lived handoff token TTL (defaults to '120s'). */
+  handoffTtl?: string;
 }
 
 export class TokenError extends Error {
@@ -28,14 +30,19 @@ export class TokenError extends Error {
 export interface AuthCore {
   signAccess(sub: string, name: string): Promise<string>;
   signRefresh(sub: string, name: string): Promise<string>;
+  /** Short-lived token to carry identity to another game (URL `?pt=` / QR). */
+  signHandoff(sub: string, name: string): Promise<string>;
   /** Throws TokenError on an expired/invalid token. */
   verify(token: string): Promise<AuthClaims>;
 }
 
+const asTyp = (raw: unknown): AuthClaims['typ'] =>
+  raw === 'refresh' ? 'refresh' : raw === 'handoff' ? 'handoff' : 'access';
+
 export const createAuthCore = (cfg: AuthConfig): AuthCore => {
   const key = new TextEncoder().encode(cfg.secret);
 
-  const sign = (sub: string, name: string, typ: 'access' | 'refresh', ttl: string): Promise<string> =>
+  const sign = (sub: string, name: string, typ: AuthClaims['typ'], ttl: string): Promise<string> =>
     new SignJWT({ name, typ })
       .setProtectedHeader({ alg: 'HS256' })
       .setSubject(sub)
@@ -47,11 +54,11 @@ export const createAuthCore = (cfg: AuthConfig): AuthCore => {
   return {
     signAccess: (sub, name) => sign(sub, name, 'access', cfg.accessTtl),
     signRefresh: (sub, name) => sign(sub, name, 'refresh', cfg.refreshTtl),
+    signHandoff: (sub, name) => sign(sub, name, 'handoff', cfg.handoffTtl ?? '120s'),
     verify: async (token) => {
       try {
         const { payload } = await jwtVerify(token, key, { issuer: cfg.issuer });
-        const typ = payload.typ === 'refresh' ? 'refresh' : 'access';
-        return { sub: String(payload.sub ?? ''), name: String(payload.name ?? ''), typ };
+        return { sub: String(payload.sub ?? ''), name: String(payload.name ?? ''), typ: asTyp(payload.typ) };
       } catch (err) {
         if (err instanceof joseErrors.JWTExpired) throw new TokenError('token expired', 'expired');
         throw new TokenError('invalid token', 'invalid');

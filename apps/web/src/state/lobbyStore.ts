@@ -24,6 +24,8 @@ interface LobbyUIState {
   me: { accountId: string; displayName: string } | null;
   rooms: lobby.RoomSummary[];
   room: lobby.LobbyRoom | null;
+  /** A room to auto-join once connected (set by an invite deep-link). */
+  pendingRoomId: string | null;
   error: string | null;
 
   /** Connect to the CIVA lobby using the stored account (refreshes the access token first). */
@@ -31,17 +33,20 @@ interface LobbyUIState {
   disconnect: () => void;
   create: (name?: string) => void;
   join: (roomId: string) => void;
+  /** Join a room now if connected, else remember it and join on connect (invite deep-link). */
+  setPendingJoin: (roomId: string) => void;
   leave: () => void;
   pickNation: (nation: string | null) => void;
   setReady: (ready: boolean) => void;
   start: () => void;
 }
 
-export const useLobbyStore = create<LobbyUIState>((set) => ({
+export const useLobbyStore = create<LobbyUIState>((set, get) => ({
   status: 'idle',
   me: null,
   rooms: [],
   room: null,
+  pendingRoomId: null,
   error: null,
 
   connectToLobby: async () => {
@@ -66,7 +71,15 @@ export const useLobbyStore = create<LobbyUIState>((set) => ({
     socket?.close();
     socket = io(LOBBY_URL, { auth: { token }, transports: ['websocket'] });
 
-    socket.on('connect', () => set({ status: 'connected', error: null }));
+    socket.on('connect', () => {
+      set({ status: 'connected', error: null });
+      // Honour an invite deep-link: jump straight into the room once we're connected.
+      const pending = get().pendingRoomId;
+      if (pending) {
+        emit(lobby.C2S.join, { roomId: pending });
+        set({ pendingRoomId: null });
+      }
+    });
     socket.on('disconnect', () => set({ status: 'connecting' }));
     socket.on('connect_error', (err: Error) => set({ status: 'error', error: err.message }));
 
@@ -90,6 +103,10 @@ export const useLobbyStore = create<LobbyUIState>((set) => ({
 
   create: (name) => emit(lobby.C2S.create, { name }),
   join: (roomId) => emit(lobby.C2S.join, { roomId }),
+  setPendingJoin: (roomId) => {
+    if (socket?.connected) emit(lobby.C2S.join, { roomId });
+    else set({ pendingRoomId: roomId });
+  },
   leave: () => emit(lobby.C2S.leave, {}),
   pickNation: (nation) => emit(lobby.C2S.pickNation, { nation }),
   setReady: (ready) => emit(lobby.C2S.ready, { ready }),

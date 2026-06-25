@@ -2,9 +2,14 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { nations } from '@civa/game-config';
 import type { lobby } from '@civa/protocol';
 import { useLobbyStore } from '../state/lobbyStore.js';
+import { useSocialStore } from '../state/socialStore.js';
 import { usePlatformStore } from '../platform/platformStore.js';
 import { GAMES, type GameInfo } from '../platform/games.js';
+import { FriendsSidebar } from '../platform/FriendsSidebar.js';
+import { routeToInvite } from '../platform/inviteRouting.js';
 import { enterGame } from '../net/orchestratorClient.js';
+import { getHandoff } from '../net/authClient.js';
+import { resolveInvite } from '../net/inviteClient.js';
 
 const NATION_FLAG: Record<string, string> = {
   usa: '🇺🇸',
@@ -57,6 +62,28 @@ export const LobbyScreen = (): JSX.Element => {
   useEffect(() => {
     usePlatformStore.getState().restore();
   }, []);
+
+  // Connect the platform social layer (friends + presence) once we have an account.
+  useEffect(() => {
+    if (account) void useSocialStore.getState().connect();
+    else useSocialStore.getState().disconnect();
+  }, [account?.accountId]);
+
+  // Honour an invite deep-link (`?invite=CODE`) once logged in: resolve it, route into the game,
+  // and strip the param so a refresh doesn't re-trigger.
+  useEffect(() => {
+    if (!account) return;
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('invite');
+    if (!code) return;
+    void (async () => {
+      const inv = await resolveInvite(code);
+      params.delete('invite');
+      const qs = params.toString();
+      window.history.replaceState({}, '', window.location.pathname + (qs ? `?${qs}` : ''));
+      if (inv) await routeToInvite(inv);
+    })();
+  }, [account?.accountId]);
 
   if (!account) return <NameEntry />;
   if (!selectedGame) return <GameSelect />;
@@ -113,10 +140,13 @@ const GameSelect = (): JSX.Element => {
 
   const handlePlay = (g: GameInfo): void => {
     if (g.externalPort) {
-      // Wake the game (orchestrator) then navigate to its own origin.
+      // Wake the game (orchestrator), mint a short-lived handoff token, then navigate to its own
+      // origin carrying `?pt=` so it can sign you in via SSO (no second login).
       void (async () => {
         await enterGame(g.id);
-        window.location.href = `${window.location.protocol}//${window.location.hostname}:${g.externalPort}`;
+        const handoff = await getHandoff();
+        const base = `${window.location.protocol}//${window.location.hostname}:${g.externalPort}`;
+        window.location.href = handoff ? `${base}/?pt=${encodeURIComponent(handoff)}` : base;
       })();
     } else {
       selectGame(g.id);
@@ -125,7 +155,7 @@ const GameSelect = (): JSX.Element => {
 
   return (
     <div style={shell}>
-      <div className="civa-panel civa-fade-in" style={{ width: 720, maxWidth: '94vw', padding: 24 }}>
+      <div className="civa-panel civa-fade-in" style={{ width: 720, maxWidth: '70vw', padding: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 18 }}>
           <h1 style={{ fontSize: 'var(--fs-xl)', fontWeight: 800 }}>Choose a game</h1>
           <span style={{ marginLeft: 'auto', color: 'var(--c-text-muted)', fontSize: 'var(--fs-sm)' }}>
@@ -141,6 +171,7 @@ const GameSelect = (): JSX.Element => {
           ))}
         </div>
       </div>
+      <FriendsSidebar />
     </div>
   );
 };
@@ -190,6 +221,7 @@ const GameTile = ({ game, onPlay }: { game: GameInfo; onPlay: () => void }): JSX
 // --- CIVA lobby -------------------------------------------------------------
 const exitToHub = (): void => {
   useLobbyStore.getState().disconnect();
+  useSocialStore.getState().setActivity(null); // clear presence: back on the hub
   usePlatformStore.getState().exitGame();
 };
 
@@ -211,6 +243,16 @@ const CivaLobby = (): JSX.Element => {
       cancelled = true;
     };
   }, []);
+
+  // Report presence so friends see "Playing CIVA" (and which room, for Join/Spectate later).
+  useEffect(() => {
+    useSocialStore.getState().setActivity({
+      game: 'civa',
+      gameName: 'CIVA',
+      room: room?.id ?? null,
+      joinable: room?.status === 'waiting',
+    });
+  }, [room?.id, room?.status]);
 
   if (waking) return <Splash text="Starting CIVA…" />;
   if (!room) return <RoomList connecting={status !== 'connected'} />;
@@ -286,9 +328,78 @@ const RoomList = ({ connecting }: { connecting: boolean }): JSX.Element => {
   );
 };
 
+/** In-room invite affordances: a shareable link/code, plus one-click invites to online friends. */
+const InvitePanel = ({ roomId }: { roomId: string }): JSX.Element => {
+  const friends = useSocialStore((s) => s.friends);
+  const { createInvite, inviteFriend } = useSocialStore.getState();
+  const [code, setCode] = useState<string | null>(null);
+  const [copied, setCopied] = useState<'code' | 'link' | null>(null);
+  const [invited, setInvited] = useState<string[]>([]);
+  const target = { game: 'civa', gameName: 'CIVA', room: roomId, role: 'player' as const };
+
+  useEffect(() => {
+    let alive = true;
+    void createInvite(target).then((c) => alive && setCode(c));
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId]);
+
+  const link = code ? `${window.location.origin}/?invite=${code}` : '';
+  const copy = (what: 'code' | 'link', value: string) =>
+    void navigator.clipboard?.writeText(value).then(() => {
+      setCopied(what);
+      window.setTimeout(() => setCopied(null), 1500);
+    });
+  const online = friends.filter((f) => f.status === 'accepted' && f.presence === 'online');
+
+  return (
+    <div className="civa-fade-in" style={{ padding: 14, marginBottom: 16, borderRadius: 'var(--r-md)', background: 'rgba(255,255,255,0.04)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ color: 'var(--c-text-muted)', fontSize: 'var(--fs-xs)' }}>Code</span>
+        <code style={{ fontWeight: 700, letterSpacing: 1 }}>{code ?? '…'}</code>
+        <button disabled={!code} onClick={() => code && copy('code', code)} style={{ ...primaryBtn, padding: '4px 10px' }}>
+          {copied === 'code' ? '✓' : 'Copy code'}
+        </button>
+        <button disabled={!code} onClick={() => copy('link', link)} style={{ marginLeft: 'auto', ...primaryBtn, padding: '4px 10px' }}>
+          {copied === 'link' ? '✓ Copied' : 'Copy link'}
+        </button>
+      </div>
+
+      {online.length > 0 && (
+        <>
+          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--c-text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '12px 0 6px' }}>
+            Invite friends
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 140, overflowY: 'auto' }}>
+            {online.map((f) => (
+              <div key={f.accountId} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px' }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--c-positive)' }} />
+                <span style={{ flex: 1, fontSize: 'var(--fs-sm)' }}>{f.displayName}</span>
+                <button
+                  disabled={invited.includes(f.accountId)}
+                  onClick={() => {
+                    inviteFriend(f.accountId, target);
+                    setInvited((p) => [...p, f.accountId]);
+                  }}
+                  style={{ ...primaryBtn, padding: '4px 10px', opacity: invited.includes(f.accountId) ? 0.5 : 1 }}
+                >
+                  {invited.includes(f.accountId) ? 'Invited' : 'Invite'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 const RoomView = ({ room, myAccountId }: { room: lobby.LobbyRoom; myAccountId: string }): JSX.Element => {
   const { pickNation, setReady, start, leave } = useLobbyStore.getState();
   const error = useLobbyStore((s) => s.error);
+  const [showInvite, setShowInvite] = useState(false);
   const me = room.players.find((p) => p.accountId === myAccountId);
   const takenBy = new Map(room.players.filter((p) => p.nation).map((p) => [p.nation!, p.accountId]));
   const readyCount = room.players.filter((p) => p.ready).length;
@@ -303,10 +414,18 @@ const RoomView = ({ room, myAccountId }: { room: lobby.LobbyRoom; myAccountId: s
           <span style={{ marginLeft: 12, color: 'var(--c-text-muted)', fontSize: 'var(--fs-sm)' }}>
             {room.players.length}/{room.maxPlayers} · {readyCount} ready · min {room.minPlayers}
           </span>
-          <button onClick={() => leave()} style={{ marginLeft: 'auto', color: 'var(--c-text-muted)', fontSize: 'var(--fs-sm)' }}>
+          <button
+            onClick={() => setShowInvite((v) => !v)}
+            style={{ marginLeft: 'auto', ...primaryBtn, padding: '6px 12px' }}
+          >
+            ✉ Invite
+          </button>
+          <button onClick={() => leave()} style={{ marginLeft: 12, color: 'var(--c-text-muted)', fontSize: 'var(--fs-sm)' }}>
             Leave
           </button>
         </div>
+
+        {showInvite && <InvitePanel roomId={room.id} />}
 
         {/* Players */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 18 }}>

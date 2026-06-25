@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import type { AddressInfo } from 'node:net';
 import { createAuthCore } from '@civa/auth-core';
-import type { LoginResponse, RefreshResponse } from '@civa/protocol';
+import type { HandoffResponse, LoginResponse, RefreshResponse } from '@civa/protocol';
 import { createCapturingLogger, createFakeClock } from '@civa/test-harness';
 import { createApp } from './app.js';
 import { createMemoryAccountStore } from './store.js';
@@ -62,6 +62,24 @@ describe('auth service', () => {
     const { base } = await start();
     const login = await json<LoginResponse>(await post(base, '/auth/login', { displayName: 'X' }));
     const res = await post(base, '/auth/refresh', { refreshToken: login.accessToken });
+    expect(res.status).toBe(401);
+  });
+
+  it('mints a handoff token (typ=handoff) from a refresh token', async () => {
+    const { base, auth } = await start();
+    const login = await json<LoginResponse>(await post(base, '/auth/login', { displayName: 'Lia' }));
+    const res = await post(base, '/auth/handoff', { refreshToken: login.refreshToken });
+    expect(res.status).toBe(200);
+    const body = await json<HandoffResponse>(res);
+    expect(body).toMatchObject({ accountId: login.accountId, displayName: 'Lia' });
+    const claims = await auth.verify(body.handoffToken);
+    expect(claims).toMatchObject({ sub: login.accountId, name: 'Lia', typ: 'handoff' });
+  });
+
+  it('rejects handoff when given an access token', async () => {
+    const { base } = await start();
+    const login = await json<LoginResponse>(await post(base, '/auth/login', { displayName: 'X' }));
+    const res = await post(base, '/auth/handoff', { refreshToken: login.accessToken });
     expect(res.status).toBe(401);
   });
 

@@ -10,6 +10,9 @@ import { errorSchema } from './errors.js';
 export const lobbyStatus = z.enum(['waiting', 'starting', 'started']);
 export type LobbyStatus = z.infer<typeof lobbyStatus>;
 
+export const roomVisibility = z.enum(['public', 'private']);
+export type RoomVisibility = z.infer<typeof roomVisibility>;
+
 export const lobbyPlayer = z.object({
   accountId: z.string(),
   displayName: z.string(),
@@ -18,6 +21,8 @@ export const lobbyPlayer = z.object({
   /** False while every device of this account is disconnected (seat is held during the grace window). */
   connected: z.boolean(),
   isHost: z.boolean(),
+  /** A filler bot (auto-ready, auto-nation) — not a real account. */
+  isBot: z.boolean(),
 });
 export type LobbyPlayer = z.infer<typeof lobbyPlayer>;
 
@@ -28,6 +33,12 @@ export const lobbyRoom = z.object({
   players: z.array(lobbyPlayer),
   minPlayers: z.number().int(),
   maxPlayers: z.number().int(),
+  /** Private rooms are hidden from the public list — joinable only by code/invite. */
+  visibility: roomVisibility,
+  /** Auto-start once everyone is ready (no host click needed). */
+  autostart: z.boolean(),
+  /** Seconds left in the auto-start countdown while `status === 'starting'`, else null. */
+  countdown: z.number().int().nullable(),
 });
 export type LobbyRoom = z.infer<typeof lobbyRoom>;
 
@@ -49,20 +60,36 @@ export const C2S = {
   ready: 'lobby.ready',
   start: 'lobby.start',
   getState: 'lobby.getState',
+  quickMatch: 'lobby.quickMatch', // join an open public room or create one ("play now")
+  addBot: 'lobby.addBot', // host fills a seat with a bot
+  removeBot: 'lobby.removeBot',
+  setVisibility: 'lobby.setVisibility', // host toggles public/private
+  setAutostart: 'lobby.setAutostart', // host toggles auto-start
 } as const;
 
-export const createPayload = z.object({ name: z.string().max(40).optional() });
+export const createPayload = z.object({
+  name: z.string().max(40).optional(),
+  visibility: roomVisibility.optional(),
+  autostart: z.boolean().optional(),
+});
 export const joinPayload = z.object({ roomId: z.string() });
 export const leavePayload = z.object({}).strict();
 export const pickNationPayload = z.object({ nation: z.string().nullable() });
 export const readyPayload = z.object({ ready: z.boolean() });
 export const startPayload = z.object({}).strict();
 export const getStatePayload = z.object({}).strict();
+export const quickMatchPayload = z.object({}).strict();
+export const addBotPayload = z.object({}).strict();
+export const removeBotPayload = z.object({ accountId: z.string() });
+export const setVisibilityPayload = z.object({ visibility: roomVisibility });
+export const setAutostartPayload = z.object({ autostart: z.boolean() });
 
 export type CreatePayload = z.infer<typeof createPayload>;
 export type JoinPayload = z.infer<typeof joinPayload>;
 export type PickNationPayload = z.infer<typeof pickNationPayload>;
 export type ReadyPayload = z.infer<typeof readyPayload>;
+export type SetVisibilityPayload = z.infer<typeof setVisibilityPayload>;
+export type SetAutostartPayload = z.infer<typeof setAutostartPayload>;
 
 // --- Server -> Client events -------------------------------------------------
 export const S2C = {

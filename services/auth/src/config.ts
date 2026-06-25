@@ -7,6 +7,7 @@ export interface ServiceConfig {
   readonly jwtIssuer: string;
   readonly accessTtl: string;
   readonly refreshTtl: string;
+  readonly handoffTtl: string;
 }
 
 export const loadConfig = (): ServiceConfig => ({
@@ -17,4 +18,5 @@ export const loadConfig = (): ServiceConfig => ({
   jwtIssuer: process.env.JWT_ISSUER ?? 'civa',
   accessTtl: process.env.ACCESS_TTL ?? '15m',
   refreshTtl: process.env.REFRESH_TTL ?? '30d',
+  handoffTtl: process.env.HANDOFF_TTL ?? '120s',
 });

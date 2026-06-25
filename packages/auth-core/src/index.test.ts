@@ -15,6 +15,11 @@ describe('auth-core', () => {
     expect(claims.typ).toBe('refresh');
   });
 
+  it('marks handoff tokens with typ=handoff and carries identity', async () => {
+    const claims = await core.verify(await core.signHandoff('acc-3', 'Lia'));
+    expect(claims).toMatchObject({ sub: 'acc-3', name: 'Lia', typ: 'handoff' });
+  });
+
   it('rejects a tampered/invalid token', async () => {
     await expect(core.verify('not.a.jwt')).rejects.toBeInstanceOf(TokenError);
   });

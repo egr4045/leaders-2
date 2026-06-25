@@ -16,6 +16,7 @@ const auth = createAuthCore({
   issuer: config.jwtIssuer,
   accessTtl: config.accessTtl,
   refreshTtl: config.refreshTtl,
+  handoffTtl: config.handoffTtl,
 });
 const app = createApp({ clock: { now: () => Date.now() }, logger, auth, accounts: createMemoryAccountStore() });
 

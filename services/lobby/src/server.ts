@@ -25,6 +25,7 @@ export interface LobbyDeps {
   readonly logger: Logger;
   readonly corsOrigin: string;
   readonly graceMs: number;
+  readonly autostartMs: number;
 }
 
 export interface LobbyServer {
@@ -78,10 +79,38 @@ export const createLobbyServer = (deps: LobbyDeps): LobbyServer => {
       .catch(() => next(new Error('unauthorized')));
   });
 
-  const rooms = () => deps.store.list().map(L.toSummary);
+  // Public room list — private rooms are hidden (joinable only by code/invite).
+  const rooms = () => deps.store.list().filter((r) => r.visibility === 'public').map(L.toSummary);
   const broadcastRooms = () => io.emit(lobby.S2C.rooms, { rooms: rooms() });
   const broadcastRoom = (room: RoomRecord) => {
     if (deps.store.get(room.id)) io.to(room.id).emit(lobby.S2C.state, { room: L.toWire(room) });
+  };
+
+  /**
+   * Keep the auto-start countdown in sync with readiness. When a room becomes fully ready it enters
+   * `starting` and a timer fires the start; if readiness drops first, the countdown is cancelled.
+   */
+  const reconcileAutostart = (room: RoomRecord) => {
+    if (!deps.store.get(room.id)) return; // room was removed
+    if (room.autostart && room.status === 'waiting' && L.canStart(room)) {
+      room.status = 'starting';
+      room.countdown = Math.ceil(deps.autostartMs / 1000);
+      room.startTimer = setTimeout(() => {
+        const live = deps.store.get(room.id);
+        if (!live || live.status !== 'starting') return;
+        L.beginGame(live, randomUUID());
+        broadcastRoom(live);
+        broadcastRooms();
+        io.to(live.id).emit(lobby.S2C.started, { roomId: live.id, sessionId: live.sessionId! });
+      }, deps.autostartMs);
+      broadcastRoom(room);
+    } else if (room.status === 'starting' && (!room.autostart || !L.canStart(room))) {
+      if (room.startTimer) clearTimeout(room.startTimer);
+      delete room.startTimer;
+      delete room.countdown;
+      room.status = 'waiting';
+      broadcastRoom(room);
+    }
   };
   const sendMyState = (socket: Socket) => {
     const room = deps.store.roomOfAccount((socket.data as SocketData).accountId);
@@ -129,13 +158,14 @@ export const createLobbyServer = (deps: LobbyDeps): LobbyServer => {
       }
       broadcastRoom(room);
       broadcastRooms();
+      reconcileAutostart(room);
     };
 
     socket.on(lobby.C2S.create, (raw) =>
       guard(() => {
         const prev = deps.store.roomOfAccount(accountId);
         const p = parse(lobby.createPayload, raw);
-        enter(L.createRoom(deps.store, accountId, displayName, p.name), prev);
+        enter(L.createRoom(deps.store, accountId, displayName, p), prev);
       }),
     );
     socket.on(lobby.C2S.join, (raw) =>
@@ -145,22 +175,67 @@ export const createLobbyServer = (deps: LobbyDeps): LobbyServer => {
         enter(L.joinRoom(deps.store, accountId, displayName, p.roomId), prev);
       }),
     );
+    socket.on(lobby.C2S.quickMatch, () =>
+      guard(() => {
+        const prev = deps.store.roomOfAccount(accountId);
+        enter(L.quickMatch(deps.store, accountId, displayName), prev);
+      }),
+    );
     socket.on(lobby.C2S.leave, () =>
       guard(() => {
         const left = L.leaveRoom(deps.store, accountId);
         if (left) {
           void socket.leave(left.id);
           broadcastRoom(left);
+          reconcileAutostart(left);
         }
         broadcastRooms();
         sendMyState(socket);
       }),
     );
     socket.on(lobby.C2S.pickNation, (raw) =>
-      guard(() => broadcastRoom(L.pickNation(deps.store, accountId, parse(lobby.pickNationPayload, raw).nation))),
+      guard(() => {
+        const room = L.pickNation(deps.store, accountId, parse(lobby.pickNationPayload, raw).nation);
+        broadcastRoom(room);
+        reconcileAutostart(room);
+      }),
     );
     socket.on(lobby.C2S.ready, (raw) =>
-      guard(() => broadcastRoom(L.setReady(deps.store, accountId, parse(lobby.readyPayload, raw).ready))),
+      guard(() => {
+        const room = L.setReady(deps.store, accountId, parse(lobby.readyPayload, raw).ready);
+        broadcastRoom(room);
+        reconcileAutostart(room);
+      }),
+    );
+    socket.on(lobby.C2S.addBot, () =>
+      guard(() => {
+        const room = L.addBot(deps.store, accountId);
+        broadcastRoom(room);
+        broadcastRooms();
+        reconcileAutostart(room);
+      }),
+    );
+    socket.on(lobby.C2S.removeBot, (raw) =>
+      guard(() => {
+        const room = L.removeBot(deps.store, accountId, parse(lobby.removeBotPayload, raw).accountId);
+        broadcastRoom(room);
+        broadcastRooms();
+        reconcileAutostart(room);
+      }),
+    );
+    socket.on(lobby.C2S.setVisibility, (raw) =>
+      guard(() => {
+        const room = L.setVisibility(deps.store, accountId, parse(lobby.setVisibilityPayload, raw).visibility);
+        broadcastRoom(room);
+        broadcastRooms();
+      }),
+    );
+    socket.on(lobby.C2S.setAutostart, (raw) =>
+      guard(() => {
+        const room = L.setAutostart(deps.store, accountId, parse(lobby.setAutostartPayload, raw).autostart);
+        broadcastRoom(room);
+        reconcileAutostart(room);
+      }),
     );
     socket.on(lobby.C2S.start, () =>
       guard(() => {
@@ -181,7 +256,10 @@ export const createLobbyServer = (deps: LobbyDeps): LobbyServer => {
       // Hold the seat briefly, then drop it if no device returns (correct reconnect).
       player.graceTimer = setTimeout(() => {
         const left = L.leaveRoom(deps.store, accountId);
-        if (left) broadcastRoom(left);
+        if (left) {
+          broadcastRoom(left);
+          reconcileAutostart(left);
+        }
         broadcastRooms();
       }, deps.graceMs);
       broadcastRoom(room); // mark disconnected

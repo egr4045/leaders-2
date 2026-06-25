@@ -11,7 +11,9 @@ import { z } from 'zod';
 export * from './envelope.js';
 export * from './errors.js';
 export * from './auth.js';
+export * from './invite.js';
 export * as lobby from './lobby.js';
+export * as social from './social.js';
 
 /**
  * A single typed message: a `type` discriminator string plus a zod schema for its payload.
