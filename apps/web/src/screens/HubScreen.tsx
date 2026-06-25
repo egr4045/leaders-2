@@ -69,17 +69,7 @@ export const HubScreen = (): JSX.Element => {
       <div style={{ background: '#171a21', display: 'flex', flexDirection: 'column' }}>
         
         {/* Top Row (System) */}
-        <div style={{ height: 40, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 16px', fontSize: '11px', borderBottom: '1px solid #3d4450' }}>
-          
-          {/* Global Search */}
-          <div style={{ display: 'flex', alignItems: 'center', background: '#23262e', border: '1px solid #3d4450', borderRadius: 4, padding: '4px 12px', width: 300, gap: 8 }}>
-            <span style={{ color: '#6c7784' }}>🔍</span>
-            <input 
-              type="text" 
-              placeholder="Глобальный поиск (Cmd+K)..." 
-              style={{ background: 'transparent', border: 'none', color: '#fff', outline: 'none', width: '100%', fontSize: '12px' }}
-            />
-          </div>
+        <div style={{ height: 40, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '0 16px', fontSize: '11px', borderBottom: '1px solid #3d4450' }}>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
             {/* Notification Center */}
@@ -117,8 +107,12 @@ export const HubScreen = (): JSX.Element => {
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontWeight: 700, color: '#dcdedf' }}>{me?.displayName || 'Загрузка...'}</div>
               </div>
-              <div style={{ width: 24, height: 24, borderRadius: 4, background: '#3d4450', overflow: 'hidden' }}>
-                <img src={me?.avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <div style={{ width: 24, height: 24, borderRadius: 4, background: '#3d4450', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {me?.avatarUrl ? (
+                  <img src={me.avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <span style={{ fontSize: 14, color: '#8f98a0' }}>👤</span>
+                )}
               </div>
             </div>
           </div>

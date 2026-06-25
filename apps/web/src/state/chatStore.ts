@@ -7,7 +7,6 @@ export interface ChatMessage {
   timestamp: string;
   status?: 'sent' | 'delivered' | 'read';
   reactions?: Record<string, number>;
-  attachment?: { type: 'image' | 'invite' | 'voice', url?: string, label?: string };
 }
 
 export interface ChatSession {
@@ -40,7 +39,7 @@ const MOCK_SESSIONS: ChatSession[] = [
     messages: [
       { id: 'm1', senderId: 'friend_s1mple', text: 'Пойдем рейтинг катать?', timestamp: 'Вчера, 20:45' },
       { id: 'm2', senderId: 'user_me', text: 'Давай, я зайду через 5 минут', timestamp: 'Вчера, 20:46', status: 'read', reactions: { '👍': 1 } },
-      { id: 'm3', senderId: 'friend_s1mple', text: 'Кидаю инвайт', timestamp: 'Вчера, 20:50', attachment: { type: 'invite', label: 'Приглашение в лобби (CIVA 2)' } }
+      { id: 'm3', senderId: 'friend_s1mple', text: 'Жду в лобби', timestamp: 'Вчера, 20:50' }
     ]
   },
   {
@@ -51,8 +50,7 @@ const MOCK_SESSIONS: ChatSession[] = [
     avatar: '🏆',
     messages: [
       { id: 'gm1', senderId: 'CyberCat', text: 'Завтра играем в 20:00', timestamp: '19:30' },
-      { id: 'gm2', senderId: 'user_me', text: 'Понял, буду', timestamp: '19:31', status: 'read' },
-      { id: 'gm3', senderId: 'CyberCat', text: 'Голосовое сообщение', timestamp: '19:32', attachment: { type: 'voice', label: '0:14' } }
+      { id: 'gm2', senderId: 'user_me', text: 'Понял, буду', timestamp: '19:31', status: 'read' }
     ]
   }
 ];

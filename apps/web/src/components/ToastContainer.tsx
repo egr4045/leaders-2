@@ -45,7 +45,7 @@ export const ToastContainer = (): JSX.Element => {
     <div style={{
       position: 'fixed',
       right: 24,
-      bottom: 24,
+      top: 60,
       display: 'flex',
       flexDirection: 'column',
       gap: 12,

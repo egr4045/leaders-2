@@ -231,16 +231,6 @@ export const ChatWidget = (): JSX.Element | null => {
                           {!isMe && activeSession.type === 'group' && <div style={{ fontSize: '11px', color: '#8f98a0', marginBottom: 2 }}>{m.senderId}</div>}
                           
                           <div style={{ background: isMe ? '#2a475e' : '#3d4450', padding: '10px 14px', borderRadius: isMe ? '12px 12px 0 12px' : '12px 12px 12px 0', fontSize: '13px', color: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.2)' }}>
-                            {/* Attachments */}
-                            {m.attachment && (
-                              <div style={{ background: 'rgba(0,0,0,0.2)', padding: 12, borderRadius: 8, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12, border: '1px solid rgba(255,255,255,0.1)' }}>
-                                <div style={{ fontSize: 24 }}>{m.attachment.type === 'voice' ? '🎙️' : (m.attachment.type === 'invite' ? '🎮' : '🖼️')}</div>
-                                <div style={{ fontWeight: 600 }}>{m.attachment.label}</div>
-                                {m.attachment.type === 'voice' && <div style={{ flex: 1, height: 4, background: '#54a5d4', borderRadius: 2 }} />}
-                                {m.attachment.type === 'invite' && <button style={{ background: '#5c7e10', border: 'none', color: '#fff', padding: '4px 12px', borderRadius: 4, cursor: 'pointer', fontSize: '11px', marginLeft: 'auto' }}>Принять</button>}
-                              </div>
-                            )}
-                            {/* Text */}
                             <div style={{ lineHeight: 1.4 }}>{m.text}</div>
                           </div>
                           
@@ -263,21 +253,6 @@ export const ChatWidget = (): JSX.Element | null => {
 
                   {/* Input */}
                   <div style={{ padding: '12px 16px', background: '#171a21', borderTop: '1px solid #3d4450', display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <button 
-                      title="Прикрепить"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        openMenu(e.clientX, e.clientY - 120, [
-                          { label: '🖼️ Отправить картинку', action: () => alert('Мок загрузки картинки') },
-                          { label: '🎮 Пригласить в лобби', action: () => alert('Инвайт отправлен') },
-                          { label: '🎙️ Отправить голосовое', action: () => alert('Запись...') },
-                        ]);
-                      }}
-                      style={{ background: 'transparent', border: 'none', color: '#8f98a0', cursor: 'pointer', fontSize: 20 }}
-                    >
-                      📎
-                    </button>
                     <input 
                       type="text" 
                       placeholder="Написать сообщение..." 
