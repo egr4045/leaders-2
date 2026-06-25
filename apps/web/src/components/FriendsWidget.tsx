@@ -30,28 +30,7 @@ export const FriendsWidget = (): JSX.Element => {
           <div style={{ fontWeight: 700, fontSize: '13px', color: '#dcdedf' }}>Список друзей и чат</div>
           <button style={{ background: 'transparent', border: 'none', color: '#8f98a0', cursor: 'pointer' }}>_</button>
         </div>
-        <div style={{ flex: 1, position: 'relative' }} onContextMenu={(e) => {
-          const target = e.target as HTMLElement;
-          const friendItem = target.closest('[data-friend-id]');
-          if (friendItem) {
-            const id = friendItem.getAttribute('data-friend-id');
-            const f = friends.find(friend => friend.id === id);
-            if (f) {
-              e.preventDefault();
-              openMenu(e.clientX, e.clientY, [
-                { label: '👤 Посмотреть профиль', action: () => alert(`Открыт профиль ${f.displayName}`) },
-                { label: '💬 Написать сообщение', action: () => alert(`Чат с ${f.displayName}`) },
-                { separator: true, action: () => {} },
-                { label: '🎮 Пригласить в текущую игру', action: () => alert('Приглашение отправлено!'), disabled: !activeGameId },
-                { label: '🚀 Присоединиться к игре', action: () => alert('Присоединяемся...'), disabled: !f.presence },
-                { label: '🎤 Позвонить', action: () => alert('Звонок...') },
-                { separator: true, action: () => {} },
-                { label: '🚫 Заблокировать', action: () => alert('Пользователь заблокирован'), danger: true },
-                { label: '🗑️ Удалить из друзей', action: () => alert('Пользователь удален'), danger: true }
-              ]);
-            }
-          }
-        }}>
+        <div style={{ flex: 1, position: 'relative' }}>
           <FriendsSidebar inOverlay={true} />
         </div>
       </div>

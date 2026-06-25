@@ -68,6 +68,7 @@ export const LibrarySidebar = ({ selectedGameId, onSelectGame }: { selectedGameI
 
 const GameListItem = ({ game, selected, onClick }: { game: GameInfo, selected: boolean, onClick: () => void }) => {
   const playable = game.status === 'playable';
+  const openMenu = useMenuStore((s) => s.openMenu);
   return (
     <div 
       onClick={onClick}
