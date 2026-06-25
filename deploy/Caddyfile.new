@@ -1,0 +1,13 @@
+mygame-quiz.ru, www.mygame-quiz.ru {
+	encode gzip
+
+	# LiveKit signal/WebSocket (needed for CIVA too)
+	handle_path /livekit/* {
+		reverse_proxy livekit:7880
+	}
+
+	# Forward everything else to the new Hub (CIVA gateway)
+	handle {
+		reverse_proxy host.docker.internal:8088
+	}
+}

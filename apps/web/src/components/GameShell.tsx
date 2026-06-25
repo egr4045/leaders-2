@@ -33,8 +33,6 @@ export const GameShell = (): JSX.Element => {
         {phase === 'assembly' && <AssemblyScreen />}
         {phase === 'finale' && <FinaleScreen />}
       </div>
-
-      <DevPhaseSwitcher />
     </>
   );
 };
