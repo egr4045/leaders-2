@@ -113,7 +113,7 @@ const ContactAuthorView = () => (
         <div style={{ background: 'rgba(0,0,0,0.3)', padding: 24, borderRadius: 8, border: '1px solid #3d4450' }}>
           <h2 style={{ fontSize: 24, color: '#fff', marginBottom: 12 }}>Telegram автора</h2>
           <p style={{ color: '#8f98a0', marginBottom: 16 }}>Следи за новостями, багами и разработкой:</p>
-          <a href="https://t.me/your_telegram_here" target="_blank" rel="noreferrer" style={{ display: 'inline-block', background: '#2AABEE', color: '#fff', padding: '16px 24px', borderRadius: 8, textDecoration: 'none', fontWeight: 800, fontSize: 18, width: '100%', textAlign: 'center' }}>ПЕРЕЙТИ В TELEGRAM</a>
+          <a href="https://t.me/egr4045" target="_blank" rel="noreferrer" style={{ display: 'inline-block', background: '#2AABEE', color: '#fff', padding: '16px 24px', borderRadius: 8, textDecoration: 'none', fontWeight: 800, fontSize: 18, width: '100%', textAlign: 'center' }}>ПЕРЕЙТИ В TELEGRAM</a>
         </div>
 
         <div style={{ background: 'rgba(0,0,0,0.3)', padding: 24, borderRadius: 8, border: '1px solid #3d4450' }}>
