@@ -37,9 +37,9 @@ const sectionLabel: CSSProperties = {
 };
 
 const activityText = (f: social.Friend): string => {
-  if (f.presence === 'offline') return 'Offline';
-  if (f.activity) return `Playing ${f.activity.gameName}`;
-  return 'Online';
+  if (f.presence === 'offline') return 'Не в сети';
+  if (f.activity) return `Играет в ${f.activity.gameName}`;
+  return 'В сети';
 };
 
 export const FriendsSidebar = ({ inOverlay = false }: { inOverlay?: boolean }): JSX.Element => {
@@ -76,10 +76,10 @@ export const FriendsSidebar = ({ inOverlay = false }: { inOverlay?: boolean }): 
 
   const handleFriendContext = (e: React.MouseEvent, f: social.Friend) => {
     showContextMenu(e, [
-      { label: 'Send Message', onClick: () => console.log('Message', f.accountId) },
-      { label: 'View Profile', onClick: () => console.log('Profile', f.accountId) },
-      { label: 'Invite to Game', onClick: () => console.log('Invite', f.accountId), disabled: f.presence === 'offline' },
-      { label: 'Remove Friend', onClick: () => removeFriend(f.accountId), color: '#ff5c5c' }
+      { label: 'Написать сообщение', onClick: () => console.log('Message', f.accountId) },
+      { label: 'Посмотреть профиль', onClick: () => console.log('Profile', f.accountId) },
+      { label: 'Пригласить в игру', onClick: () => console.log('Invite', f.accountId), disabled: f.presence === 'offline' },
+      { label: 'Удалить из друзей', onClick: () => removeFriend(f.accountId), color: '#ff5c5c' }
     ]);
   };
 
@@ -101,10 +101,10 @@ export const FriendsSidebar = ({ inOverlay = false }: { inOverlay?: boolean }): 
           {/* Fake Avatar */}
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 600, fontSize: '15px' }}>{me?.displayName || 'Loading...'}</div>
+          <div style={{ fontWeight: 600, fontSize: '15px' }}>{me?.displayName || 'Загрузка...'}</div>
           <div style={{ fontSize: '12px', color: status === 'connected' ? '#5c7e10' : '#8f98a0', display: 'flex', alignItems: 'center', gap: 4 }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: status === 'connected' ? '#5c7e10' : '#8f98a0' }} />
-            {status === 'connected' ? 'Online' : 'Connecting...'}
+            {status === 'connected' ? 'В сети' : 'Подключение...'}
           </div>
         </div>
       </div>
@@ -113,19 +113,19 @@ export const FriendsSidebar = ({ inOverlay = false }: { inOverlay?: boolean }): 
       <div style={{ padding: '8px 12px', display: 'flex', gap: 6, borderBottom: '1px solid #23262e' }}>
         <input
           value={code}
-          placeholder="Add friend by code"
+          placeholder="Код друга"
           onChange={(e) => setCode(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && add()}
           style={inputStyle}
         />
-        <button onClick={add} style={smallBtn}>Add</button>
+        <button onClick={add} style={smallBtn}>Добавить</button>
       </div>
 
       {/* Lists */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '8px 4px' }}>
         {inGame.length > 0 && (
           <>
-            <div style={sectionLabel}>IN-GAME ({inGame.length})</div>
+            <div style={sectionLabel}>В ИГРЕ ({inGame.length})</div>
             {inGame.map(f => (
               <FriendRow key={f.accountId} f={f} onContextMenu={(e) => handleFriendContext(e, f)} />
             ))}
@@ -134,7 +134,7 @@ export const FriendsSidebar = ({ inOverlay = false }: { inOverlay?: boolean }): 
 
         {online.length > 0 && (
           <>
-            <div style={sectionLabel}>ONLINE ({online.length})</div>
+            <div style={sectionLabel}>В СЕТИ ({online.length})</div>
             {online.map(f => (
               <FriendRow key={f.accountId} f={f} onContextMenu={(e) => handleFriendContext(e, f)} />
             ))}
@@ -143,7 +143,7 @@ export const FriendsSidebar = ({ inOverlay = false }: { inOverlay?: boolean }): 
 
         {offline.length > 0 && (
           <>
-            <div style={sectionLabel}>OFFLINE ({offline.length})</div>
+            <div style={sectionLabel}>НЕ В СЕТИ ({offline.length})</div>
             {offline.map(f => (
               <FriendRow key={f.accountId} f={f} onContextMenu={(e) => handleFriendContext(e, f)} />
             ))}
@@ -152,7 +152,7 @@ export const FriendsSidebar = ({ inOverlay = false }: { inOverlay?: boolean }): 
 
         {incoming.length > 0 && (
           <>
-            <div style={sectionLabel}>REQUESTS</div>
+            <div style={sectionLabel}>ЗАЯВКИ</div>
             {incoming.map(f => (
               <div key={f.accountId} style={{ padding: '4px 8px', display: 'flex', gap: 8 }}>
                 <span style={{flex: 1, fontSize: '13px'}}>{f.displayName}</span>
@@ -166,8 +166,8 @@ export const FriendsSidebar = ({ inOverlay = false }: { inOverlay?: boolean }): 
 
       {/* Footer / Your code */}
       <div style={{ padding: 12, background: '#171a21', fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ color: '#8f98a0' }}>Your Code: {me?.accountId?.slice(0, 8) ?? '...'}</span>
-        <button onClick={copyCode} style={{...smallBtn, padding: '4px 8px'}}>{copied ? 'Copied' : 'Copy'}</button>
+        <span style={{ color: '#8f98a0' }}>Ваш код: {me?.accountId?.slice(0, 8) ?? '...'}</span>
+        <button onClick={copyCode} style={{...smallBtn, padding: '4px 8px'}}>{copied ? 'Скопировано' : 'Копировать'}</button>
       </div>
     </div>
   );

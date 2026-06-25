@@ -15,6 +15,7 @@ export const HubScreen = (): JSX.Element => {
   
   // Local state for library navigation (doesn't start the game yet)
   const [viewedGameId, setViewedGameId] = useState<string | null>(GAMES[0].id);
+  const [activeTab, setActiveTab] = useState<'store' | 'library' | 'community' | 'contact'>('library');
 
   const handlePlay = (g: GameInfo): void => {
     if (g.externalPort) {
@@ -39,34 +40,87 @@ export const HubScreen = (): JSX.Element => {
         
         {/* Top Row (System) */}
         <div style={{ height: 40, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '0 16px', fontSize: '11px', gap: 16 }}>
-          <div style={{ background: '#3d4450', padding: '4px 8px', borderRadius: 2 }}>wallet: 0,00 ₽</div>
           <div style={{ cursor: 'pointer' }} onClick={logout}>{me?.displayName} ▼</div>
         </div>
 
         {/* Main Nav Row */}
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', padding: '0 24px', gap: 32 }}>
           <div style={{ fontSize: 24, fontWeight: 800, color: '#fff', letterSpacing: 2, marginRight: 24 }}>NEXUS</div>
-          <div style={{ fontSize: '20px', fontWeight: 600, color: '#dcdedf', textTransform: 'uppercase', cursor: 'pointer' }}>Store</div>
-          <div style={{ fontSize: '20px', fontWeight: 600, color: '#1a9fff', textTransform: 'uppercase', cursor: 'pointer', borderBottom: '3px solid #1a9fff', paddingBottom: 4 }}>Library</div>
-          <div style={{ fontSize: '20px', fontWeight: 600, color: '#dcdedf', textTransform: 'uppercase', cursor: 'pointer' }}>Community</div>
-          <div style={{ fontSize: '20px', fontWeight: 600, color: '#dcdedf', textTransform: 'uppercase', cursor: 'pointer' }}>{me?.displayName}</div>
+          <NavTab label="МАГАЗИН" active={activeTab === 'store'} onClick={() => setActiveTab('store')} />
+          <NavTab label="БИБЛИОТЕКА" active={activeTab === 'library'} onClick={() => setActiveTab('library')} />
+          <NavTab label="СООБЩЕСТВО" active={activeTab === 'community'} onClick={() => setActiveTab('community')} />
+          <NavTab label="СВЯЗЬ С АВТОРОМ" active={activeTab === 'contact'} onClick={() => setActiveTab('contact')} />
+          <NavTab label={me?.displayName?.toUpperCase() || 'ПРОФИЛЬ'} active={false} onClick={() => {}} />
         </div>
 
       </div>
 
-      {/* Library Sub-nav */}
-      <div style={{ height: 40, background: 'linear-gradient(to right, #242c3d 0%, #1b2838 100%)', display: 'flex', alignItems: 'center', padding: '0 24px', gap: 24, fontSize: '13px', fontWeight: 600, color: '#dcdedf' }}>
-        <span style={{ color: '#fff' }}>HOME</span>
-        <span style={{ color: '#8f98a0' }}>COLLECTIONS</span>
-      </div>
+      {activeTab === 'library' && (
+        <>
+          {/* Library Sub-nav */}
+          <div style={{ height: 40, background: 'linear-gradient(to right, #242c3d 0%, #1b2838 100%)', display: 'flex', alignItems: 'center', padding: '0 24px', gap: 24, fontSize: '13px', fontWeight: 600, color: '#dcdedf' }}>
+            <span style={{ color: '#fff', cursor: 'pointer' }}>ГЛАВНАЯ</span>
+            <span style={{ color: '#8f98a0', cursor: 'pointer' }}>КОЛЛЕКЦИИ</span>
+          </div>
 
-      {/* Split View Content */}
-      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-        <LibrarySidebar selectedGameId={viewedGameId} onSelectGame={setViewedGameId} />
-        <GameDetailsView game={viewedGame} onPlay={handlePlay} />
-      </div>
+          {/* Split View Content */}
+          <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+            <LibrarySidebar selectedGameId={viewedGameId} onSelectGame={setViewedGameId} />
+            <GameDetailsView game={viewedGame} onPlay={handlePlay} />
+          </div>
+        </>
+      )}
+
+      {activeTab === 'contact' && (
+        <ContactAuthorView />
+      )}
+
+      {(activeTab === 'store' || activeTab === 'community') && (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8f98a0', fontSize: 24 }}>
+          В разработке...
+        </div>
+      )}
 
       <FriendsWidget />
     </div>
   );
 };
+
+const NavTab = ({ label, active, onClick }: { label: string, active: boolean, onClick: () => void }) => (
+  <div 
+    onClick={onClick}
+    style={{ 
+      fontSize: '20px', 
+      fontWeight: 600, 
+      color: active ? '#1a9fff' : '#dcdedf', 
+      cursor: 'pointer', 
+      borderBottom: active ? '3px solid #1a9fff' : '3px solid transparent', 
+      paddingBottom: 4,
+      transition: 'color 0.1s'
+    }}
+    onMouseOver={(e) => !active && (e.currentTarget.style.color = '#fff')}
+    onMouseOut={(e) => !active && (e.currentTarget.style.color = '#dcdedf')}
+  >
+    {label}
+  </div>
+);
+
+const ContactAuthorView = () => (
+  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 40, overflowY: 'auto' }}>
+    <h1 style={{ fontSize: 32, fontWeight: 800, color: '#fff', marginBottom: 32 }}>Связь с автором</h1>
+    
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24 }}>
+      <div style={{ background: 'rgba(0,0,0,0.3)', padding: 24, borderRadius: 8, border: '1px solid #3d4450' }}>
+        <h2 style={{ fontSize: 24, color: '#fff', marginBottom: 12 }}>Предложить идею</h2>
+        <p style={{ color: '#8f98a0', marginBottom: 24 }}>Есть крутая идея для новой механики или игры? Напиши мне напрямую в Telegram, мы это обсудим!</p>
+        <a href="https://t.me/your_telegram_here" target="_blank" rel="noreferrer" style={{ display: 'inline-block', background: '#3d4450', color: '#fff', padding: '10px 20px', borderRadius: 4, textDecoration: 'none', fontWeight: 600 }}>Написать в Telegram</a>
+      </div>
+
+      <div style={{ background: 'rgba(0,0,0,0.3)', padding: 24, borderRadius: 8, border: '1px solid #3d4450' }}>
+        <h2 style={{ fontSize: 24, color: '#fff', marginBottom: 12 }}>Поддержать автора</h2>
+        <p style={{ color: '#8f98a0', marginBottom: 24 }}>Проект разрабатывается на энтузиазме. Любая поддержка поможет оплачивать сервера и двигаться быстрее!</p>
+        <button style={{ background: '#5c7e10', border: 'none', color: '#fff', padding: '10px 20px', borderRadius: 4, fontWeight: 600, cursor: 'pointer' }}>Задонатить (Boosty)</button>
+      </div>
+    </div>
+  </div>
+);

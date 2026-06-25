@@ -44,8 +44,8 @@ export const SteamOverlay = (): JSX.Element | null => {
       if (e.target === e.currentTarget) setIsOpen(false);
     }}>
       <div style={headerStyle}>
-        <div style={{ fontSize: '24px', fontWeight: 800 }}>STEAM OVERLAY</div>
-        <div style={{ color: '#9aa9bd' }}>Press Shift+Tab to close</div>
+        <div style={{ fontSize: '24px', fontWeight: 800 }}>ОВЕРЛЕЙ STEAM</div>
+        <div style={{ color: '#9aa9bd' }}>Нажмите Shift+Tab чтобы закрыть</div>
       </div>
       
       {/* Container for floating windows inside overlay */}

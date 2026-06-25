@@ -4,7 +4,7 @@ export const GameDetailsView = ({ game, onPlay }: { game: GameInfo | null, onPla
   if (!game) {
     return (
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1b2838', color: '#6c7784' }}>
-        Select a game from your library
+        Выберите игру из библиотеки
       </div>
     );
   }
@@ -52,7 +52,7 @@ export const GameDetailsView = ({ game, onPlay }: { game: GameInfo | null, onPla
             onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
             onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
-            PLAY
+            ИГРАТЬ
           </button>
         ) : (
           <button 
@@ -67,24 +67,24 @@ export const GameDetailsView = ({ game, onPlay }: { game: GameInfo | null, onPla
               fontWeight: 600, 
             }}
           >
-            COMING SOON
+            СКОРО ВЫЙДЕТ
           </button>
         )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ fontSize: '11px', color: '#8f98a0', textTransform: 'uppercase' }}>LAST PLAYED</div>
-          <div style={{ fontSize: '13px', color: '#dcdedf' }}>Today</div>
+          <div style={{ fontSize: '11px', color: '#8f98a0', textTransform: 'uppercase' }}>ПОСЛЕДНИЙ ЗАПУСК</div>
+          <div style={{ fontSize: '13px', color: '#dcdedf' }}>Сегодня</div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ fontSize: '11px', color: '#8f98a0', textTransform: 'uppercase' }}>PLAY TIME</div>
-          <div style={{ fontSize: '13px', color: '#dcdedf' }}>12 hours</div>
+          <div style={{ fontSize: '11px', color: '#8f98a0', textTransform: 'uppercase' }}>ВРЕМЯ В ИГРЕ</div>
+          <div style={{ fontSize: '13px', color: '#dcdedf' }}>12 часов</div>
         </div>
       </div>
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 32, padding: '24px 40px 0 40px', borderBottom: '1px solid #2a3f5a' }}>
-        {['Store Page', 'Community Hub', 'Find Groups', 'Discussions', 'Support'].map((tab, i) => (
+        {['Страница в магазине', 'Центр сообщества', 'Найти группы', 'Обсуждения', 'Поддержка'].map((tab, i) => (
           <div key={tab} style={{ fontSize: '13px', color: i === 0 ? '#fff' : '#8f98a0', paddingBottom: 8, borderBottom: i === 0 ? '3px solid #66c0f4' : 'none', cursor: 'pointer' }}>
             {tab}
           </div>
@@ -94,16 +94,16 @@ export const GameDetailsView = ({ game, onPlay }: { game: GameInfo | null, onPla
       {/* Content Body */}
       <div style={{ padding: 40, display: 'flex', gap: 40, flex: 1 }}>
         <div style={{ flex: 2 }}>
-          <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#fff', marginBottom: 16 }}>ACTIVITY</h2>
+          <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#fff', marginBottom: 16 }}>АКТИВНОСТЬ</h2>
           <div style={{ background: 'rgba(0,0,0,0.2)', padding: 24, borderRadius: 4, color: '#8f98a0', fontSize: '13px' }}>
-            No recent activity to show for this game.
+            Нет недавней активности для этой игры.
           </div>
         </div>
 
         <div style={{ flex: 1 }}>
-          <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#fff', marginBottom: 16 }}>ACHIEVEMENTS</h2>
+          <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#fff', marginBottom: 16 }}>ДОСТИЖЕНИЯ</h2>
           <div style={{ background: 'rgba(0,0,0,0.2)', padding: 24, borderRadius: 4, color: '#8f98a0', fontSize: '13px' }}>
-            Achievements are locked.
+            Достижения пока недоступны.
           </div>
         </div>
       </div>

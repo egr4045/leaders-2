@@ -23,7 +23,7 @@ export const FriendsWidget = (): JSX.Element => {
         marginBottom: 1
       }}>
         <div style={{ background: '#171a21', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => setIsOpen(false)}>
-          <div style={{ fontWeight: 700, fontSize: '13px', color: '#dcdedf' }}>Friends & Chat</div>
+          <div style={{ fontWeight: 700, fontSize: '13px', color: '#dcdedf' }}>Список друзей и чат</div>
           <button style={{ background: 'transparent', border: 'none', color: '#8f98a0', cursor: 'pointer' }}>_</button>
         </div>
         <div style={{ flex: 1, position: 'relative' }}>
@@ -48,8 +48,8 @@ export const FriendsWidget = (): JSX.Element => {
             boxShadow: '0 -2px 8px rgba(0,0,0,0.5)'
           }}
         >
-          <span style={{ fontSize: '13px', fontWeight: 600 }}>Friends & Chat</span>
-          <span style={{ fontSize: '12px', background: '#3d4450', padding: '2px 6px', borderRadius: 4 }}>{onlineCount} Online</span>
+          <span style={{ fontSize: '13px', fontWeight: 600 }}>Друзья и чат</span>
+          <span style={{ fontSize: '12px', background: '#3d4450', padding: '2px 6px', borderRadius: 4 }}>В сети: {onlineCount}</span>
         </button>
       )}
     </div>

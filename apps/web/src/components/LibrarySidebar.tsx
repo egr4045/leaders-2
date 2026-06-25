@@ -15,7 +15,7 @@ export const LibrarySidebar = ({ selectedGameId, onSelectGame }: { selectedGameI
       {/* Search Bar */}
       <div style={{ padding: '12px 16px', background: '#1a1f29' }}>
         <input 
-          placeholder="Search" 
+          placeholder="Поиск" 
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{
@@ -32,7 +32,7 @@ export const LibrarySidebar = ({ selectedGameId, onSelectGame }: { selectedGameI
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
         <div style={{ fontSize: '11px', color: '#6c7784', textTransform: 'uppercase', padding: '4px 16px', fontWeight: 700, letterSpacing: 1 }}>
-          GAMES ({inCategory.length})
+          ИГРЫ ({inCategory.length})
         </div>
         {inCategory.map(g => (
           <GameListItem 
@@ -46,7 +46,7 @@ export const LibrarySidebar = ({ selectedGameId, onSelectGame }: { selectedGameI
         {soonCategory.length > 0 && (
           <>
             <div style={{ fontSize: '11px', color: '#6c7784', textTransform: 'uppercase', padding: '16px 16px 4px 16px', fontWeight: 700, letterSpacing: 1 }}>
-              COMING SOON
+              СКОРО ВЫЙДУТ
             </div>
             {soonCategory.map(g => (
               <GameListItem 
