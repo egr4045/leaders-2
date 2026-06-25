@@ -40,6 +40,11 @@ export const HubScreen = (): JSX.Element => {
         
         {/* Top Row (System) */}
         <div style={{ height: 40, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '0 16px', fontSize: '11px', gap: 16 }}>
+          {me?.displayName && !me.displayName.includes('User') && (
+            <div style={{ background: 'rgba(255, 150, 0, 0.2)', color: '#ffb347', padding: '4px 8px', borderRadius: 2, cursor: 'pointer', border: '1px solid rgba(255, 150, 0, 0.5)' }}>
+              ⚠ Привязать аккаунт (Небезопасно)
+            </div>
+          )}
           <div style={{ cursor: 'pointer' }} onClick={logout}>{me?.displayName} ▼</div>
         </div>
 
