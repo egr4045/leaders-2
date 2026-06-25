@@ -1,62 +1,39 @@
-/**
- * Friends sidebar — the Steam-style social panel on the hub. Shows your friend code, an add-by-code
- * box, incoming requests (accept/decline), and your friends with live presence + "playing X". The
- * data is server-pushed via `socialStore`; this is a thin view. Join/Spectate buttons arrive with
- * the invites module (P3/P4).
- */
 import { useState, type CSSProperties } from 'react';
 import type { social } from '@civa/protocol';
 import { useSocialStore } from '../state/socialStore.js';
 import { routeToInvite } from './inviteRouting.js';
+import { showContextMenu } from '../components/ContextMenu.js';
 
-const panel: CSSProperties = {
-  position: 'absolute',
-  top: 16,
-  right: 16,
-  bottom: 16,
-  width: 280,
-  padding: 16,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 12,
-  pointerEvents: 'auto',
-  overflow: 'hidden',
-};
-
-const input: CSSProperties = {
+const inputStyle: CSSProperties = {
   flex: 1,
-  padding: '8px 10px',
-  borderRadius: 'var(--r-md)',
-  background: 'var(--c-panel-solid)',
-  color: 'var(--c-text-primary)',
-  border: '1px solid var(--c-panel-border)',
-  fontSize: 'var(--fs-sm)',
+  padding: '6px 10px',
+  borderRadius: 2,
+  background: '#23262e',
+  color: '#dcdedf',
+  border: '1px solid #101214',
+  fontSize: '13px',
   minWidth: 0,
 };
 
 const smallBtn: CSSProperties = {
   padding: '6px 10px',
-  borderRadius: 'var(--r-md)',
-  background: 'var(--c-accent)',
-  color: 'var(--c-text-inverse)',
-  fontWeight: 700,
-  fontSize: 'var(--fs-sm)',
-};
-
-const ghostBtn: CSSProperties = {
-  padding: '6px 10px',
-  borderRadius: 'var(--r-md)',
-  border: '1px solid var(--c-panel-border)',
-  color: 'var(--c-text-muted)',
-  fontSize: 'var(--fs-sm)',
+  borderRadius: 2,
+  background: '#3d4450',
+  color: '#dcdedf',
+  fontWeight: 600,
+  fontSize: '13px',
+  border: 'none',
+  cursor: 'pointer',
 };
 
 const sectionLabel: CSSProperties = {
-  fontSize: 'var(--fs-xs)',
-  color: 'var(--c-text-muted)',
+  fontSize: '11px',
+  color: '#6c7784',
   textTransform: 'uppercase',
+  fontWeight: 700,
   letterSpacing: 0.5,
-  marginTop: 4,
+  marginTop: 8,
+  padding: '0 8px',
 };
 
 const activityText = (f: social.Friend): string => {
@@ -65,12 +42,11 @@ const activityText = (f: social.Friend): string => {
   return 'Online';
 };
 
-export const FriendsSidebar = (): JSX.Element => {
+export const FriendsSidebar = ({ inOverlay = false }: { inOverlay?: boolean }): JSX.Element => {
   const me = useSocialStore((s) => s.me);
   const friends = useSocialStore((s) => s.friends);
   const invites = useSocialStore((s) => s.invites);
   const status = useSocialStore((s) => s.status);
-  const error = useSocialStore((s) => s.error);
   const { addByCode, accept, decline, removeFriend, dismissInvite } = useSocialStore.getState();
   const [code, setCode] = useState('');
   const [copied, setCopied] = useState(false);
@@ -78,8 +54,10 @@ export const FriendsSidebar = (): JSX.Element => {
   const incoming = friends.filter((f) => f.status === 'incoming');
   const accepted = friends.filter((f) => f.status === 'accepted');
   const outgoing = friends.filter((f) => f.status === 'outgoing');
-  // Online friends first, then alphabetical.
-  accepted.sort((a, b) => (a.presence === b.presence ? a.displayName.localeCompare(b.displayName) : a.presence === 'online' ? -1 : 1));
+  
+  const inGame = accepted.filter(f => f.presence === 'online' && f.activity);
+  const online = accepted.filter(f => f.presence === 'online' && !f.activity);
+  const offline = accepted.filter(f => f.presence === 'offline');
 
   const add = () => {
     if (code.trim()) {
@@ -87,6 +65,7 @@ export const FriendsSidebar = (): JSX.Element => {
       setCode('');
     }
   };
+
   const copyCode = () => {
     if (!me) return;
     void navigator.clipboard?.writeText(me.accountId).then(() => {
@@ -95,149 +74,133 @@ export const FriendsSidebar = (): JSX.Element => {
     });
   };
 
+  const handleFriendContext = (e: React.MouseEvent, f: social.Friend) => {
+    showContextMenu(e, [
+      { label: 'Send Message', onClick: () => console.log('Message', f.accountId) },
+      { label: 'View Profile', onClick: () => console.log('Profile', f.accountId) },
+      { label: 'Invite to Game', onClick: () => console.log('Invite', f.accountId), disabled: f.presence === 'offline' },
+      { label: 'Remove Friend', onClick: () => removeFriend(f.accountId), color: '#ff5c5c' }
+    ]);
+  };
+
   return (
-    <div className="civa-panel" style={panel}>
-      <div style={{ display: 'flex', alignItems: 'center' }}>
-        <h2 style={{ fontSize: 'var(--fs-lg)', fontWeight: 800 }}>Friends</h2>
-        <span
-          title={status}
-          style={{
-            marginLeft: 8,
-            width: 8,
-            height: 8,
-            borderRadius: '50%',
-            background: status === 'connected' ? 'var(--c-positive)' : 'var(--c-warning)',
-          }}
-        />
-        <span style={{ marginLeft: 'auto', color: 'var(--c-text-muted)', fontSize: 'var(--fs-xs)' }}>
-          {accepted.filter((f) => f.presence === 'online').length} online
-        </span>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      width: '100%',
+      height: '100%',
+      background: '#1b2838',
+      color: '#dcdedf',
+      ...(inOverlay ? {} : {
+        position: 'absolute', right: 16, bottom: 16, width: 300, height: 500, borderRadius: 4, boxShadow: '0 4px 16px rgba(0,0,0,0.5)', zIndex: 100
+      })
+    }}>
+      {/* Header */}
+      <div style={{ padding: 12, background: '#171a21', display: 'flex', alignItems: 'center' }}>
+        <div style={{ width: 40, height: 40, background: '#3d4450', borderRadius: 4, marginRight: 12 }}>
+          {/* Fake Avatar */}
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 600, fontSize: '15px' }}>{me?.displayName || 'Loading...'}</div>
+          <div style={{ fontSize: '12px', color: status === 'connected' ? '#5c7e10' : '#8f98a0', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: status === 'connected' ? '#5c7e10' : '#8f98a0' }} />
+            {status === 'connected' ? 'Online' : 'Connecting...'}
+          </div>
+        </div>
       </div>
 
-      {/* Your friend code */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ color: 'var(--c-text-muted)', fontSize: 'var(--fs-xs)' }}>Your code</span>
-        <code style={{ flex: 1, fontSize: 'var(--fs-xs)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {me?.accountId ?? '…'}
-        </code>
-        <button onClick={copyCode} style={ghostBtn}>
-          {copied ? '✓' : 'Copy'}
-        </button>
-      </div>
-
-      {/* Add by code */}
-      <div style={{ display: 'flex', gap: 6 }}>
+      {/* Add Friend block */}
+      <div style={{ padding: '8px 12px', display: 'flex', gap: 6, borderBottom: '1px solid #23262e' }}>
         <input
           value={code}
-          placeholder="Add by friend code"
+          placeholder="Add friend by code"
           onChange={(e) => setCode(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && add()}
-          style={input}
+          style={inputStyle}
         />
-        <button onClick={add} style={smallBtn}>
-          Add
-        </button>
+        <button onClick={add} style={smallBtn}>Add</button>
       </div>
-      {error && <div style={{ color: 'var(--c-negative)', fontSize: 'var(--fs-xs)' }}>⚠ {error}</div>}
 
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {invites.length > 0 && <div style={sectionLabel}>Invites</div>}
-        {invites.map((inv) => (
-          <div
-            key={inv.code}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 'var(--r-md)', background: 'var(--c-accent-muted)' }}
-          >
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 600, fontSize: 'var(--fs-sm)' }}>{inv.inviterName}</div>
-              <div style={{ color: 'var(--c-accent)', fontSize: 'var(--fs-xs)' }}>
-                {inv.gameName}
-                {inv.role === 'spectator' ? ' · spectate' : ''}
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                dismissInvite(inv.code);
-                void routeToInvite(inv);
-              }}
-              style={smallBtn}
-            >
-              Join
-            </button>
-            <button title="Dismiss" onClick={() => dismissInvite(inv.code)} style={ghostBtn}>
-              ✕
-            </button>
-          </div>
-        ))}
-
-        {incoming.length > 0 && <div style={sectionLabel}>Requests</div>}
-        {incoming.map((f) => (
-          <Row key={f.accountId} f={f}>
-            <button onClick={() => accept(f.accountId)} style={smallBtn}>
-              Accept
-            </button>
-            <button onClick={() => decline(f.accountId)} style={ghostBtn}>
-              ✕
-            </button>
-          </Row>
-        ))}
-
-        {accepted.length > 0 && <div style={sectionLabel}>Friends</div>}
-        {accepted.map((f) => (
-          <Row key={f.accountId} f={f}>
-            <button title="Remove" onClick={() => removeFriend(f.accountId)} style={ghostBtn}>
-              ✕
-            </button>
-          </Row>
-        ))}
-        {accepted.length === 0 && incoming.length === 0 && (
-          <div style={{ color: 'var(--c-text-muted)', fontSize: 'var(--fs-sm)', textAlign: 'center', padding: 16 }}>
-            No friends yet. Share your code to connect.
-          </div>
+      {/* Lists */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 4px' }}>
+        {inGame.length > 0 && (
+          <>
+            <div style={sectionLabel}>IN-GAME ({inGame.length})</div>
+            {inGame.map(f => (
+              <FriendRow key={f.accountId} f={f} onContextMenu={(e) => handleFriendContext(e, f)} />
+            ))}
+          </>
         )}
 
-        {outgoing.length > 0 && <div style={sectionLabel}>Pending</div>}
-        {outgoing.map((f) => (
-          <Row key={f.accountId} f={f}>
-            <span style={{ color: 'var(--c-text-muted)', fontSize: 'var(--fs-xs)' }}>requested</span>
-            <button onClick={() => decline(f.accountId)} style={ghostBtn}>
-              ✕
-            </button>
-          </Row>
-        ))}
+        {online.length > 0 && (
+          <>
+            <div style={sectionLabel}>ONLINE ({online.length})</div>
+            {online.map(f => (
+              <FriendRow key={f.accountId} f={f} onContextMenu={(e) => handleFriendContext(e, f)} />
+            ))}
+          </>
+        )}
+
+        {offline.length > 0 && (
+          <>
+            <div style={sectionLabel}>OFFLINE ({offline.length})</div>
+            {offline.map(f => (
+              <FriendRow key={f.accountId} f={f} onContextMenu={(e) => handleFriendContext(e, f)} />
+            ))}
+          </>
+        )}
+
+        {incoming.length > 0 && (
+          <>
+            <div style={sectionLabel}>REQUESTS</div>
+            {incoming.map(f => (
+              <div key={f.accountId} style={{ padding: '4px 8px', display: 'flex', gap: 8 }}>
+                <span style={{flex: 1, fontSize: '13px'}}>{f.displayName}</span>
+                <button onClick={() => accept(f.accountId)} style={{...smallBtn, background: '#5c7e10', padding: '2px 8px'}}>✓</button>
+                <button onClick={() => decline(f.accountId)} style={{...smallBtn, padding: '2px 8px'}}>✕</button>
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+
+      {/* Footer / Your code */}
+      <div style={{ padding: 12, background: '#171a21', fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ color: '#8f98a0' }}>Your Code: {me?.accountId?.slice(0, 8) ?? '...'}</span>
+        <button onClick={copyCode} style={{...smallBtn, padding: '4px 8px'}}>{copied ? 'Copied' : 'Copy'}</button>
       </div>
     </div>
   );
 };
 
-const Row = ({ f, children }: { f: social.Friend; children: React.ReactNode }): JSX.Element => (
-  <div
-    style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: 8,
-      padding: '6px 8px',
-      borderRadius: 'var(--r-md)',
-      background: 'rgba(255,255,255,0.03)',
-    }}
-  >
-    <span
-      title={f.presence}
+const FriendRow = ({ f, onContextMenu }: { f: social.Friend, onContextMenu: (e: React.MouseEvent) => void }) => {
+  const isOnline = f.presence === 'online';
+  const isInGame = isOnline && f.activity;
+
+  return (
+    <div
+      onContextMenu={onContextMenu}
       style={{
-        width: 8,
-        height: 8,
-        borderRadius: '50%',
-        flexShrink: 0,
-        background: f.presence === 'online' ? 'var(--c-positive)' : 'var(--c-text-muted)',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '6px 8px',
+        cursor: 'pointer',
+        gap: 12
       }}
-    />
-    <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={{ fontWeight: 600, fontSize: 'var(--fs-sm)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {f.displayName}
+      onMouseOver={(e) => e.currentTarget.style.background = '#23262e'}
+      onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+    >
+      <div style={{ width: 32, height: 32, background: isInGame ? '#5c7e10' : (isOnline ? '#54a5d4' : '#3d4450'), borderRadius: 2, padding: 2 }}>
+        <div style={{ width: '100%', height: '100%', background: '#1a1f29' }} />
       </div>
-      <div style={{ color: f.activity ? 'var(--c-accent)' : 'var(--c-text-muted)', fontSize: 'var(--fs-xs)' }}>
-        {activityText(f)}
+      <div>
+        <div style={{ fontSize: '13px', fontWeight: 600, color: isInGame ? '#a3d928' : (isOnline ? '#54a5d4' : '#8f98a0') }}>
+          {f.displayName}
+        </div>
+        <div style={{ fontSize: '11px', color: isInGame ? '#a3d928' : '#8f98a0' }}>
+          {activityText(f)}
+        </div>
       </div>
     </div>
-    {children}
-  </div>
-);
+  );
+};

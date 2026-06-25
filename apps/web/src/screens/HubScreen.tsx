@@ -1,41 +1,21 @@
-import { type CSSProperties } from 'react';
+import { useState } from 'react';
 import { usePlatformStore } from '../platform/platformStore.js';
 import { GAMES, type GameInfo } from '../platform/games.js';
-import { FriendsSidebar } from '../platform/FriendsSidebar.js';
-import { ProfileWidget } from '../components/ProfileWidget.js';
+import { FriendsWidget } from '../components/FriendsWidget.js';
+import { LibrarySidebar } from '../components/LibrarySidebar.js';
+import { GameDetailsView } from '../components/GameDetailsView.js';
 import { enterGame } from '../net/orchestratorClient.js';
 import { getHandoff } from '../net/authClient.js';
-
-const shell: CSSProperties = {
-  position: 'absolute',
-  inset: 0,
-  display: 'flex',
-  background: 'linear-gradient(135deg, #0b0f16 0%, #16243a 100%)',
-  pointerEvents: 'auto',
-};
-
-const mainContent: CSSProperties = {
-  flex: 1,
-  padding: '40px 40px 40px 80px',
-  display: 'flex',
-  flexDirection: 'column',
-  marginRight: 320, // space for sidebar
-  overflowY: 'auto'
-};
-
-const navItem: CSSProperties = {
-  fontSize: 'var(--fs-lg)',
-  fontWeight: 700,
-  color: 'var(--c-text-muted)',
-  cursor: 'pointer',
-  transition: 'color var(--motion-fast)',
-  textTransform: 'uppercase',
-  letterSpacing: 1
-};
+import { useSocialStore } from '../state/socialStore.js';
 
 export const HubScreen = (): JSX.Element => {
   const selectGame = usePlatformStore((s) => s.selectGame);
+  const logout = usePlatformStore((s) => s.logout);
+  const me = useSocialStore((s) => s.me);
   
+  // Local state for library navigation (doesn't start the game yet)
+  const [viewedGameId, setViewedGameId] = useState<string | null>(GAMES[0].id);
+
   const handlePlay = (g: GameInfo): void => {
     if (g.externalPort) {
       void (async () => {
@@ -49,83 +29,44 @@ export const HubScreen = (): JSX.Element => {
     }
   };
 
+  const viewedGame = GAMES.find(g => g.id === viewedGameId) || null;
+
   return (
-    <div style={shell}>
-      <div style={mainContent} className="civa-fade-in">
-        <div style={{ display: 'flex', gap: 32, marginBottom: 40 }}>
-          <div style={{ ...navItem, color: '#fff', borderBottom: '2px solid var(--c-accent)' }}>Library</div>
-          <div style={{ ...navItem, opacity: 0.5 }}>Store</div>
-          <div style={{ ...navItem, opacity: 0.5 }}>Community</div>
+    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: '#1b2838', color: '#dcdedf', fontFamily: 'Motiva Sans, Arial, Helvetica, sans-serif' }} className="civa-fade-in">
+      
+      {/* Global Steam-like Nav Bar */}
+      <div style={{ background: '#171a21', height: 104, display: 'flex', flexDirection: 'column' }}>
+        
+        {/* Top Row (System) */}
+        <div style={{ height: 40, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '0 16px', fontSize: '11px', gap: 16 }}>
+          <div style={{ background: '#3d4450', padding: '4px 8px', borderRadius: 2 }}>wallet: 0,00 ₽</div>
+          <div style={{ cursor: 'pointer' }} onClick={logout}>{me?.displayName} ▼</div>
         </div>
 
-        <ProfileWidget />
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 24 }}>
-          {GAMES.map((g) => (
-            <GameTile key={g.id} game={g} onPlay={() => handlePlay(g)} />
-          ))}
+        {/* Main Nav Row */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', padding: '0 24px', gap: 32 }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#fff', letterSpacing: 2, marginRight: 24 }}>NEXUS</div>
+          <div style={{ fontSize: '20px', fontWeight: 600, color: '#dcdedf', textTransform: 'uppercase', cursor: 'pointer' }}>Store</div>
+          <div style={{ fontSize: '20px', fontWeight: 600, color: '#1a9fff', textTransform: 'uppercase', cursor: 'pointer', borderBottom: '3px solid #1a9fff', paddingBottom: 4 }}>Library</div>
+          <div style={{ fontSize: '20px', fontWeight: 600, color: '#dcdedf', textTransform: 'uppercase', cursor: 'pointer' }}>Community</div>
+          <div style={{ fontSize: '20px', fontWeight: 600, color: '#dcdedf', textTransform: 'uppercase', cursor: 'pointer' }}>{me?.displayName}</div>
         </div>
-      </div>
-      
-      <FriendsSidebar />
-    </div>
-  );
-};
 
-const GameTile = ({ game, onPlay }: { game: GameInfo; onPlay: () => void }): JSX.Element => {
-  const playable = game.status === 'playable';
-  return (
-    <div
-      onClick={() => playable && onPlay()}
-      style={{
-        position: 'relative',
-        display: 'flex',
-        flexDirection: 'column',
-        borderRadius: 'var(--r-lg)',
-        overflow: 'hidden',
-        minHeight: 320,
-        background: playable ? `linear-gradient(180deg, ${game.accent}33 0%, rgba(20,30,45,0.9) 100%)` : 'rgba(255,255,255,0.02)',
-        border: `1px solid ${playable ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.02)'}`,
-        cursor: playable ? 'pointer' : 'default',
-        transition: 'transform var(--motion-base), box-shadow var(--motion-base), border-color var(--motion-base)',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-        opacity: playable ? 1 : 0.6,
-      }}
-      onMouseOver={(e) => {
-        if(playable) {
-          e.currentTarget.style.transform = 'translateY(-4px)';
-          e.currentTarget.style.boxShadow = `0 16px 32px ${game.accent}44`;
-          e.currentTarget.style.borderColor = game.accent;
-        }
-      }}
-      onMouseOut={(e) => {
-        if(playable) {
-          e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.4)';
-          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
-        }
-      }}
-    >
-      <div style={{ flex: 1, padding: 24, display: 'flex', flexDirection: 'column' }}>
-        <span style={{ fontSize: 48, marginBottom: 16 }}>{game.emoji}</span>
-        <h3 style={{ fontSize: 'var(--fs-xl)', fontWeight: 800, margin: '0 0 8px 0', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
-          {game.name}
-        </h3>
-        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--c-text-muted)', margin: 0, flex: 1 }}>
-          {game.tagline}
-        </p>
       </div>
-      
-      <div style={{ padding: '16px 24px', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(10px)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ color: 'var(--c-text-muted)', fontSize: 'var(--fs-xs)', textTransform: 'uppercase', letterSpacing: 1 }}>
-          {playable ? 'Ready to play' : 'Coming soon'}
-        </span>
-        {playable && (
-          <button style={{ background: game.accent, color: '#000', border: 'none', borderRadius: 'var(--r-md)', padding: '8px 16px', fontWeight: 800, cursor: 'pointer' }}>
-            PLAY
-          </button>
-        )}
+
+      {/* Library Sub-nav */}
+      <div style={{ height: 40, background: 'linear-gradient(to right, #242c3d 0%, #1b2838 100%)', display: 'flex', alignItems: 'center', padding: '0 24px', gap: 24, fontSize: '13px', fontWeight: 600, color: '#dcdedf' }}>
+        <span style={{ color: '#fff' }}>HOME</span>
+        <span style={{ color: '#8f98a0' }}>COLLECTIONS</span>
       </div>
+
+      {/* Split View Content */}
+      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+        <LibrarySidebar selectedGameId={viewedGameId} onSelectGame={setViewedGameId} />
+        <GameDetailsView game={viewedGame} onPlay={handlePlay} />
+      </div>
+
+      <FriendsWidget />
     </div>
   );
 };
