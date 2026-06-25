@@ -8,7 +8,6 @@ import { enterGame } from '../net/orchestratorClient.js';
 import { getHandoff } from '../net/authClient.js';
 import { useSocialStore } from '../state/socialStore.js';
 import { SteamOverlay } from '../components/SteamOverlay.js';
-import { NavTab } from '../components/NavTab.js';
 import { ProfileView } from '../components/ProfileView.js';
 
 export const HubScreen = (): JSX.Element => {
