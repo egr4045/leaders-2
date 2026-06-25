@@ -33,7 +33,7 @@ export const HubScreen = (): JSX.Element => {
   const viewedGame = GAMES.find(g => g.id === viewedGameId) || null;
 
   return (
-    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: '#1b2838', color: '#dcdedf', fontFamily: 'Motiva Sans, Arial, Helvetica, sans-serif' }} className="civa-fade-in">
+    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: '#1b2838', color: '#dcdedf', fontFamily: 'Motiva Sans, Arial, Helvetica, sans-serif', pointerEvents: 'auto' }} className="civa-fade-in">
       
       {/* Global Steam-like Nav Bar */}
       <div style={{ background: '#171a21', height: 104, display: 'flex', flexDirection: 'column' }}>
