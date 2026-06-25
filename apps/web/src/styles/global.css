@@ -119,3 +119,20 @@ button {
     transform: rotate(12deg);
   }
 }
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+  .mobile-split-view {
+    flex-direction: column !important;
+  }
+  .library-sidebar {
+    width: 100% !important;
+    max-height: 300px !important;
+    border-right: none !important;
+    border-bottom: 1px solid #000 !important;
+  }
+  .mobile-nav {
+    gap: 16px !important;
+    padding: 0 16px !important;
+  }
+}

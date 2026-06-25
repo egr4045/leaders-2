@@ -39,17 +39,19 @@ export const FriendsWidget = (): JSX.Element => {
             background: '#171a21', 
             color: '#dcdedf',
             border: 'none',
-            borderRadius: '4px 4px 0 0',
-            padding: '8px 16px',
+            borderRadius: '8px 8px 0 0',
+            padding: '16px 24px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: 8,
-            boxShadow: '0 -2px 8px rgba(0,0,0,0.5)'
+            gap: 12,
+            boxShadow: '0 -4px 12px rgba(0,0,0,0.7)',
+            width: '100%',
+            justifyContent: 'center'
           }}
         >
-          <span style={{ fontSize: '13px', fontWeight: 600 }}>Друзья и чат</span>
-          <span style={{ fontSize: '12px', background: '#3d4450', padding: '2px 6px', borderRadius: 4 }}>В сети: {onlineCount}</span>
+          <span style={{ fontSize: '18px', fontWeight: 700 }}>Друзья и чат</span>
+          <span style={{ fontSize: '16px', background: '#3d4450', padding: '4px 12px', borderRadius: 6 }}>В сети: {onlineCount}</span>
         </button>
       )}
     </div>

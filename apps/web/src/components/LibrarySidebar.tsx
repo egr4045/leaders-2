@@ -10,7 +10,7 @@ export const LibrarySidebar = ({ selectedGameId, onSelectGame }: { selectedGameI
   const soonCategory = filteredGames.filter(g => g.status === 'soon');
 
   return (
-    <div style={{ width: 280, background: '#171a21', display: 'flex', flexDirection: 'column', borderRight: '1px solid #000' }}>
+    <div className="library-sidebar" style={{ width: 280, background: '#171a21', display: 'flex', flexDirection: 'column', borderRight: '1px solid #000' }}>
       
       {/* Search Bar */}
       <div style={{ padding: '12px 16px', background: '#1a1f29' }}>
