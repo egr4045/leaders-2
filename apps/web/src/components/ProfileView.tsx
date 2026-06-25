@@ -127,6 +127,18 @@ export const ProfileView = (): JSX.Element => {
             >
               Выбрать титул
             </button>
+            <button 
+              onClick={() => alert('Мок привязки Telegram')}
+              style={{ background: '#2AABEE', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 4, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}
+            >
+              <span>✈</span> Привязать TG
+            </button>
+            <button 
+              onClick={() => alert('Мок привязки VK')}
+              style={{ background: '#4C75A3', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 4, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}
+            >
+              <span>K</span> Привязать VK
+            </button>
           </div>
         </div>
       </div>

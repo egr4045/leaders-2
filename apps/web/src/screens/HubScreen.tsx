@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePlatformStore } from '../platform/platformStore.js';
 import { GAMES, type GameInfo } from '../platform/games.js';
 import { FriendsWidget } from '../components/FriendsWidget.js';
@@ -15,6 +15,16 @@ export const HubScreen = (): JSX.Element => {
   const selectGame = usePlatformStore((s) => s.selectGame);
   const logout = usePlatformStore((s) => s.logout);
   const me = useSocialStore((s) => s.me);
+  
+  const [showLinkModal, setShowLinkModal] = useState(false);
+
+  useEffect(() => {
+    // Show one-time modal per session
+    if (!sessionStorage.getItem('link_prompt_shown')) {
+      setShowLinkModal(true);
+      sessionStorage.setItem('link_prompt_shown', 'true');
+    }
+  }, []);
   
   // Local state for library navigation (doesn't start the game yet)
   const [viewedGameId, setViewedGameId] = useState<string | null>(GAMES[0].id);
@@ -43,11 +53,6 @@ export const HubScreen = (): JSX.Element => {
         
         {/* Top Row (System) */}
         <div style={{ height: 40, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '0 16px', fontSize: '11px', gap: 16 }}>
-          {me?.displayName && !me.displayName.includes('User') && (
-            <div style={{ background: 'rgba(255, 150, 0, 0.2)', color: '#ffb347', padding: '4px 8px', borderRadius: 2, cursor: 'pointer', border: '1px solid rgba(255, 150, 0, 0.5)' }}>
-              ⚠ Привязать аккаунт (Небезопасно)
-            </div>
-          )}
           <div style={{ cursor: 'pointer' }} onClick={logout}>{me?.displayName} ▼</div>
         </div>
 
@@ -85,11 +90,37 @@ export const HubScreen = (): JSX.Element => {
         <ProfileView />
       )}
 
+      {showLinkModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="civa-fade-in" style={{ width: 480, background: '#1b2838', border: '1px solid #3d4450', borderRadius: 8, padding: 32, textAlign: 'center' }}>
+            <h2 style={{ color: '#fff', margin: '0 0 16px 0', fontSize: 24 }}>Защитите свой аккаунт</h2>
+            <p style={{ color: '#8f98a0', marginBottom: 32, fontSize: 14, lineHeight: 1.5 }}>
+              Привяжите Telegram или ВКонтакте прямо сейчас, чтобы не потерять прогресс. Это позволит вам мгновенно входить с любого устройства.
+              <br/><br/>
+              Вы всегда сможете сделать это позже в настройках Профиля.
+            </p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <button onClick={() => setShowLinkModal(false)} style={{ background: '#2AABEE', color: '#fff', border: 'none', padding: '14px', borderRadius: 4, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <span>✈</span> Привязать Telegram
+              </button>
+              <button onClick={() => setShowLinkModal(false)} style={{ background: '#4C75A3', color: '#fff', border: 'none', padding: '14px', borderRadius: 4, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <span>K</span> Привязать ВКонтакте
+              </button>
+              <button onClick={() => setShowLinkModal(false)} style={{ background: 'transparent', color: '#8f98a0', border: 'none', padding: '14px', cursor: 'pointer', fontWeight: 600, marginTop: 8 }}>
+                Позже
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <FriendsWidget />
     </div>
   );
 };
 
+const NavTab = ({ label, active, onClick }: { label: string, active: boolean, onClick: () => void }) => (
   <div 
     onClick={onClick}
     style={{ 
