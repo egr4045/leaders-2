@@ -10,13 +10,19 @@ import { useSocialStore } from '../state/socialStore.js';
 import { SteamOverlay } from '../components/SteamOverlay.js';
 import { ProfileView } from '../components/ProfileView.js';
 import { ContextMenu } from '../components/ContextMenu.js';
+import { ChatWidget } from '../components/ChatWidget.js';
+import { ToastContainer } from '../components/ToastContainer.js';
 import { useMenuStore } from '../state/menuStore.js';
+import { useToastStore } from '../state/toastStore.js';
+import { useChatStore } from '../state/chatStore.js';
 
 export const HubScreen = (): JSX.Element => {
   const selectGame = usePlatformStore((s) => s.selectGame);
   const logout = usePlatformStore((s) => s.logout);
   const me = useSocialStore((s) => s.me);
   const openMenu = useMenuStore((s) => s.openMenu);
+  const addToast = useToastStore((s) => s.addToast);
+  const toggleChat = useChatStore((s) => s.toggleChat);
   
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -146,6 +152,25 @@ export const HubScreen = (): JSX.Element => {
         </div>
       )}
 
+      {/* DEMO BUTTONS */}
+      <div style={{ position: 'fixed', bottom: 16, left: 16, display: 'flex', gap: 8, zIndex: 100 }}>
+        <button 
+          onClick={() => toggleChat()}
+          style={{ background: '#23262e', border: '1px solid #3d4450', color: '#fff', padding: '8px 12px', borderRadius: 4, cursor: 'pointer' }}>
+          💬 Мессенджер
+        </button>
+        <button 
+          onClick={() => addToast({ type: 'message', title: 'Новое сообщение', content: 'S1mple: Пойдем катать?', icon: '💬' })}
+          style={{ background: '#23262e', border: '1px solid #3d4450', color: '#fff', padding: '8px 12px', borderRadius: 4, cursor: 'pointer' }}>
+          🔔 Тест: Сообщение
+        </button>
+        <button 
+          onClick={() => addToast({ type: 'achievement', title: 'Достижение получено', content: 'Первая кровь (CIVA 2)', icon: '🏆' })}
+          style={{ background: '#23262e', border: '1px solid #3d4450', color: '#fff', padding: '8px 12px', borderRadius: 4, cursor: 'pointer' }}>
+          🔔 Тест: Ачивка
+        </button>
+      </div>
+
       {showLogoutConfirm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="civa-fade-in" style={{ width: 400, background: '#1b2838', border: '1px solid #3d4450', borderRadius: 8, padding: 32, textAlign: 'center' }}>
@@ -160,7 +185,9 @@ export const HubScreen = (): JSX.Element => {
       )}
 
       <FriendsWidget />
+      <ChatWidget />
       <ContextMenu />
+      <ToastContainer />
     </div>
   );
 };

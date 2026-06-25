@@ -4,6 +4,7 @@ import { useSocialStore } from '../state/socialStore.js';
 import { routeToInvite } from './inviteRouting.js';
 import { useMenuStore } from '../state/menuStore.js';
 import { usePlatformStore } from './platformStore.js';
+import { useChatStore } from '../state/chatStore.js';
 
 const inputStyle: CSSProperties = {
   flex: 1,
@@ -46,6 +47,7 @@ const activityText = (f: social.Friend): string => {
 export const FriendsSidebar = ({ inOverlay = false }: { inOverlay?: boolean }): JSX.Element => {
   const me = useSocialStore((s) => s.me);
   const openMenu = useMenuStore((s) => s.openMenu);
+  const openChatWithUser = useChatStore((s) => s.openChatWithUser);
   const activeGameId = usePlatformStore((s) => s.activeGameId);
   const friends = useSocialStore((s) => s.friends);
   const invites = useSocialStore((s) => s.invites);
@@ -82,7 +84,7 @@ export const FriendsSidebar = ({ inOverlay = false }: { inOverlay?: boolean }): 
     e.stopPropagation();
     openMenu(e.clientX, e.clientY, [
       { label: '👤 Посмотреть профиль', action: () => alert(`Открыт профиль ${f.displayName}`) },
-      { label: '💬 Написать сообщение', action: () => alert(`Чат с ${f.displayName}`) },
+      { label: '💬 Написать сообщение', action: () => openChatWithUser(f.accountId, f.displayName) },
       { separator: true, action: () => {} },
       { label: '🎮 Пригласить в текущую игру', action: () => alert('Приглашение отправлено!'), disabled: !activeGameId },
       { label: '🚀 Присоединиться к игре', action: () => alert('Присоединяемся...'), disabled: !f.presence },
